@@ -6,8 +6,6 @@ from constraint import *
 from joints import *
 from utils import *
 
-#__all__ = ['Character']
-
 class Character(object):
     '''Represents a physically simulated character (composed of bodies and joints).'''
     def __init__(self, name):
@@ -15,7 +13,6 @@ class Character(object):
 	self.name = name
 	self.bodyList = []
 	self.jointList = []
-	self.animationList = []
 
     def add_body(self, body):
 	self.bodyList.append(body)
@@ -27,18 +24,8 @@ class Character(object):
 	if isinstance(joint, JointRevolute):
 	    joint.BodyA.add_child(joint.BodyB)
 	    joint.BodyB.set_parent(joint.BodyA)
-
-    def add_animation(self, animation):
-	self.animationList.append(animation)
-
-    def make_animations(self, outdir, solver):
-	self.write_model(outdir)
-	self.write_exporter(outdir)
-	self.write_animations(outdir, solver)
-	self.write_main(outdir)
-        return
-
-    def get_newtonian_constraints(self, name, tPrev, tCurr, tNext, tRange, offset):
+	
+    def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd', offset=[0,0,0]):
 	#timestep length
 	pH = sympy.Symbol("pH")
 
@@ -99,10 +86,10 @@ class Character(object):
 
 	return constraints
 
-    def write_model(self, outdir):	
+    def write_model(self, file):
 
 	#write to an ampl file
-	file = openfile(os.path.join(outdir, self.name + '.ampl'), 'w')
+	#file = openfile(os.path.join(outdir, self.name + '.ampl'), 'w')
 
 	#write state variables
 	for body in self.bodyList:
@@ -117,7 +104,7 @@ class Character(object):
 	file.write('\n')
 	
 	#write newtonian constraints
-	newtonList = self.get_newtonian_constraints('AFM', t-1, t, t + 1, 'pTimeBegin < t < pTimeEnd', offset=[0, 0, 0])
+	newtonList = self.get_newtonian_constraints('AFM')
 	for c in newtonList:
 	    file.write(str(c))
 	file.write('\n')
@@ -128,7 +115,7 @@ class Character(object):
 		file.write(str(eq))
 	    file.write('\n')
 
-	file.close()
+	#file.close()
 	return
 
     def write_bvh_hierarchy(self, file, root, level, rootoffset):
@@ -220,13 +207,3 @@ class Character(object):
 	file.write('printf "\\n" > (filename);\n');
 
 	return
-
-    def write_animations(self, outdir, solver):
-	for anim in self.animationList:
-	    anim.write(self, outdir, solver)
-
-    def write_main(self, outdir):
-	file = openfile(os.path.join(outdir, self.name + '-main.bat'), 'w')
-	for anim in self.animationList:
-	    file.write('ampl ' + self.name + '_' + anim.Name + '.ampl\n')
-	file.write('pause\n')
