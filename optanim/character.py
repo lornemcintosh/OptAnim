@@ -86,37 +86,34 @@ class Character(object):
 
 	return constraints
 
-    def write_model(self, file):
-
-	#write to an ampl file
-	#file = openfile(os.path.join(outdir, self.name + '.ampl'), 'w')
+    def get_model(self):
+	model = ''
 
 	#write state variables
 	for body in self.bodyList:
 	    for q in body.q:
-		file.write('var %s {sTimeSteps};\n' % q)
-	file.write('\n')
+		model += ('var %s {sTimeSteps};\n' % q)
+	model += '\n'
 	
 	#write joint force variables
 	for joint in self.jointList:
 	    for f in joint.f:
-		file.write('var %s {sTimeSteps};\n' % f)
-	file.write('\n')
+		model += ('var %s {sTimeSteps};\n' % f)
+	model += '\n'
 	
 	#write newtonian constraints
 	newtonList = self.get_newtonian_constraints('AFM')
 	for c in newtonList:
-	    file.write(str(c))
-	file.write('\n')
+	    model += (str(c))
+	model += '\n'
 
 	#joint constraints
 	for joint in self.jointList:
 	    for i, eq in enumerate(joint.get_state_constraints() + joint.get_force_constraints()):
-		file.write(str(eq))
-	    file.write('\n')
+		model += (str(eq))
+	    model += '\n'
 
-	#file.close()
-	return
+	return model
 
     def write_bvh_hierarchy(self, file, root, level, rootoffset):
 	tab = '\\t' * level

@@ -2,7 +2,10 @@ from constraint import *
 from utils import *
 
 class ConstraintPlugin(object):
-    '''Base class for constraint plugins'''
+    '''Abstract base class for constraint plugins. Constraint plugins provide a
+    way to specify constraints that will perform the same function for any
+    character, regardless of particular morphologies'''
+
     def __init__(self):
 	pass
 

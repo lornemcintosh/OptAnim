@@ -2,6 +2,7 @@ from __future__ import division
 import itertools
 
 from constraint import *
+from constraintplugins import *
 from joints import *
 from utils import *
 
@@ -35,10 +36,7 @@ class Animation(object):
     def add_objective(self, obj, weight):
 	self.objectiveList.append([obj, weight])
 
-    def add_constraint_plugin(self, plugin):
-	self.pluginList.append(plugin)
-
-    def write_header(self, character, file, solver):
+    def write_header(self, character, file):
 	file.write('param pAnimName symbolic := "%s";\n' % self.Name);
 	file.write('param pi := atan(1.0)*4.0;\n')
 	file.write('param pH = %f;\n' % self.TimestepLength)
@@ -48,6 +46,7 @@ class Animation(object):
 	file.write('\n')
 
 	#write joint timing sets
+	#TODO: should this be here, or in character?
 	for j in character.jointList:
 	    if isinstance(j, JointContact):  #TODO: refactor joints so we can test isinstance(j,ToggleableJoint) or something
 		try:
@@ -60,16 +59,19 @@ class Animation(object):
 		except KeyError:
 		    raise BaseException('Character "%s" has a temp joint "%s". You must specify timings for %s.' % (character.name, j.Name, j.Name))
 
-    def write_constraints(self, character, file, solver):
-	for i, eq in enumerate(self.constraintList):
-	    file.write(str(eq))
+    def write_constraints(self, list, character, file):
+	for eq in list:
 
-	#write plugin constraints
-	for i, plugin in enumerate(self.pluginList):
-	    for c in plugin.get_constraints(character):
-		file.write(str(c))
+	    #regular constraints
+	    if isinstance(eq, Constraint):
+		file.write(str(eq))
 
-    def write_objective(self, character, file, solver):
+	    #constraint plugins
+	    if isinstance(eq, ConstraintPlugin):
+		for c in eq.get_constraints(character):
+		    file.write(str(c))
+
+    def write_objective(self, character, file):
 	#write weighted objectives
 	if len(self.objectiveList) > 0:
 	    file.write('minimize objective:\n')
@@ -104,21 +106,24 @@ class Animation(object):
 
 	#for each combination of character and parameters
 	for character in self.characterList:
+	    #cache this for a little speed boost
+	    characterModel = character.get_model()
+
 	    for index, combination in enumerate(itertools.product(*self.paramConstraintList)):
 		file = openfile(os.path.join(outdir, self.Name + '_' + character.name + '_' + str(index) + '.ampl'), 'w')
-		self.write_header(character, file, solver)
+		self.write_header(character, file)
 
 		#include the character's physical constraints
-		character.write_model(file)
+		file.write(characterModel)
 
 		#write the parameterized constraints
-		map(file.write, map(str,combination))
+		self.write_constraints(combination, character, file)
 
 		#write the 'static' non-parameterized constraints
-		self.write_constraints(character, file, solver)
-
-		self.write_objective(character, file, solver)
+		self.write_constraints(self.constraintList, character, file)
+		
+		self.write_objective(character, file)
 		self.write_footer(character, file, solver)
-
 		file.close()
 		print '.',
+

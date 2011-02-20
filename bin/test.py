@@ -49,8 +49,11 @@ anim_locomote.set_joint_timings({
 			    joint_foot_right:range(10, 20)
 			    })
 
-anim_locomote.add_constraint_plugin(ConstraintPluginLoop([1.5, 0, 0]))
-anim_locomote.add_constraint_plugin(ConstraintPluginGroundPlane())
+#2 movement speeds (1 m/s and 2 m/s)
+anim_locomote.add_param_constraint([ConstraintPluginLoop([x, 0, 0]) for x in range(1,3,1)])
+
+#stay above ground plane
+anim_locomote.add_constraint(ConstraintPluginGroundPlane())
 
 #this is a test of a parameterized constraint
 #"start within +/-1 units of X, where X is 2,4,6,8"
