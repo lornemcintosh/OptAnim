@@ -12,17 +12,17 @@ class RigidBody(object):
 	self.Mass = [Mass, Mass, 1.0 / 12.0 * Mass * Length ** 2.0]
 	self.Length = Length
 	self.q = [sympy.Symbol(Name + "_qx"), sympy.Symbol(Name + "_qy"), sympy.Symbol(Name + "_qr")]
-	self.childList = []
-	self.parent = None
+	self.ChildList = []
+	self.Parent = None
 	print 'new rigid body "' + Name + '": length = ' + str(Length) + ', mass = ' + str(Mass)
 
     def add_child(self, body):
-	self.childList.append(body)
+	self.ChildList.append(body)
 
     def set_parent(self, body):
-	if(self.parent is not None):
+	if(self.Parent is not None):
 	    raise BaseException("already has parent assigned!")
-	self.parent = body
+	self.Parent = body
 
     def ep_a(self):
 	'''returns the position of endpoint A in body local coordinates'''

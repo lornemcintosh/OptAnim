@@ -4,12 +4,12 @@ from utils import *
 
 class Constraint(object):
     '''Represents a constraint expression with lower and upper bounds'''
-    def __init__(self, name, lb=None, c=None, ub=None, timeRange=''):
-	self.name = name
+    def __init__(self, Name, lb=None, c=None, ub=None, TimeRange=''):
+	self.Name = Name
 	self.lb = lb	#lower bound
 	self.c = c	#constrained expr
 	self.ub = ub	#upper bound
-	self.timeRange = timeRange  #e.g. 1 <= t <= 5
+	self.TimeRange = TimeRange  #e.g. 1 <= t <= 5
 
     def __repr__(self):
         return AmplPrinter().doprint(self)
@@ -19,10 +19,10 @@ class Constraint(object):
 
     def _sympystr(self, p):
 	#declaration:
-	if(self.timeRange != ''):
-	    decl = 'subject to ' + self.name + ' {t in sTimeSteps: ' + self.timeRange + '}:\n\t';
+	if(self.TimeRange != ''):
+	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps: ' + self.TimeRange + '}:\n\t';
 	else:
-	    decl = 'subject to ' + self.name + ' {t in sTimeSteps}:\n\t';
+	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps}:\n\t';
 
 	#equality
 	if(self.lb == self.ub):
@@ -41,5 +41,5 @@ class Constraint(object):
 class ConstraintEq(Constraint):
     '''Convenience class for creating an equality
     constraint (lower and upper bounds are equal)'''
-    def __init__(self, name, a, b=0, timeRange=''):
-	Constraint.__init__(self, name, lb=b, c=a, ub=b, timeRange=timeRange)
+    def __init__(self, Name, a, b=0, TimeRange=''):
+	Constraint.__init__(self, Name, lb=b, c=a, ub=b, TimeRange=TimeRange)

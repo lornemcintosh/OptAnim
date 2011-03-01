@@ -73,8 +73,8 @@ class JointContact(Joint):
 
 	worldpoint_t0 = world_xf(self.Point, [bq(t) for bq in self.Body.q])
 	worldpoint_t1 = world_xf(self.Point, [bq(t-1) for bq in self.Body.q])
-	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], timeRange=tRangeOn + ' && t>0'))
-	retList.append(ConstraintEq(self.Name + '_state_y', worldpoint_t0[1], timeRange=tRangeOn))
+	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], TimeRange=tRangeOn + ' && t>0'))
+	retList.append(ConstraintEq(self.Name + '_state_y', worldpoint_t0[1], TimeRange=tRangeOn))
 	return retList
 
     def get_force_constraints(self):
@@ -84,13 +84,13 @@ class JointContact(Joint):
 	tRangeOff = 't in sTimeSteps_' + self.Name + 'Off'
 
 	#friction constraint: "stay within static friction cone"
-	retList.append(Constraint(self.Name + '_force_friction', c=self.f[0](t) ** 2, ub=(self.f[1](t) * self.Friction) ** 2, timeRange=tRangeOn))
+	retList.append(Constraint(self.Name + '_force_friction', c=self.f[0](t) ** 2, ub=(self.f[1](t) * self.Friction) ** 2, TimeRange=tRangeOn))
 
 	#contact force may only push (not pull)
-	retList.append(Constraint(self.Name + '_force_push', lb=0, c=self.f[1](t), timeRange=tRangeOn))
+	retList.append(Constraint(self.Name + '_force_push', lb=0, c=self.f[1](t), TimeRange=tRangeOn))
 
 	#when joint is off, no force
 	for force in self.f:
-	    retList.append(ConstraintEq(force.name + '_Off', a=force(t), timeRange=tRangeOff))
+	    retList.append(ConstraintEq(force.name + '_Off', a=force(t), TimeRange=tRangeOff))
 
 	return retList
