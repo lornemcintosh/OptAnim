@@ -41,23 +41,24 @@ def main():
     character.add_joint(joint_foot_right)
 
     #create an animimation
-    anim_locomote = AnimationSpec(Name='locomote', FPS=50)
+    anim_locomote = AnimationSpec(Name='locomote', FPS=25)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
-    '''anim_locomote.set_length(0.47528643)
+    '''anim_locomote.set_length(0.7)
     anim_locomote.set_contact_times({
-    	joint_foot_left:[(0.640389, 0.12789167)],	#start contact at 0.0, lasting for 0.5
-    	joint_foot_right:[(0.99982742, 0.10499423)]	#start contact at 0.5, lasting for 0.5
+    	joint_foot_left:[(0.25, 0.35)],	#start contact at 0.0, lasting for 0.5
+    	joint_foot_right:[(0.75, 0.35)]	#start contact at 0.5, lasting for 0.5
     })'''
-    anim_locomote.set_length(0.7667)
+
+    '''anim_locomote.set_length(0.7667)
     anim_locomote.set_contact_times({
     	joint_foot_left:[(0.1, 0.1)],	#start contact at 0.0, lasting for 0.5
     	joint_foot_right:[(0.6, 0.1)]	#start contact at 0.5, lasting for 0.5
-    })
+    })'''
 
     #loop constraint with 3 movement speeds: 1.4 m/s (walk), 3.1 m/s (jog), 6.0 m/s (run)
-    anim_locomote.add_param_constraint([ConstraintPluginLoop([x, 0, 0]) for x in [3.0]])
+    anim_locomote.add_param_constraint([ConstraintPluginLoop([x, 0, 0]) for x in [1.4, 3.1, 6.0]])
 
     #stay above ground plane
     anim_locomote.add_constraint(ConstraintPluginGroundPlane())
@@ -71,7 +72,7 @@ def main():
 
     #minimize torso rotation
     #anim_locomote.add_objective('sum {t in sTimeSteps} (' +
-			    #str(torso.q[2]) + '[t]**2)', 100000.0)
+	#str(torso.q[2]) + '[t]**2)', 10000.0)
 
     #minimize torques
     #we divide by time so animations of different lengths can be compared fairly
@@ -81,9 +82,16 @@ def main():
 	str(joint_hip_right.f[2]) + '[t]**2 + ' +
 	str(joint_knee_right.f[2]) + '[t]**2)) / ((pTimeEnd+1)**2)', 1.0)
 
+    #anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
+	#world_xf(torso.ep_a(), [bq(t) for bq in torso.q])[1], 1.0)
+    
+    '''anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
+	str(joint_foot_left.f[1]) + '[t]**2 + ' +
+	str(joint_foot_right.f[1]) + '[t]**2)) / ((pTimeEnd+1)**2)', 4.0)'''
+
     anim_locomote.add_character(character)
     anim_locomote.generate('.', 'ipopt')
-    #print(character.get_exporter("somefile.bvh"))
+
     print "Exit"
     return
 
@@ -92,6 +100,5 @@ if __name__ == '__main__':
     import sys
     print(sys.argv)
     print('Running Python '+sys.version)
-    #import optanim
-    #help(optanim.animation)
+
     main()

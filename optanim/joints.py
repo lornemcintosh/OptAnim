@@ -73,7 +73,7 @@ class JointContact(Joint):
 
 	worldpoint_t0 = world_xf(self.Point, [bq(t) for bq in self.Body.q])
 	worldpoint_t1 = world_xf(self.Point, [bq(t-1) for bq in self.Body.q])
-	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], TimeRange=tRangeOn + ' && t>0'))
+	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], TimeRange=tRangeOn + ' && t>pTimeBegin'))
 	retList.append(ConstraintEq(self.Name + '_state_y', worldpoint_t0[1], TimeRange=tRangeOn))
 	return retList
 

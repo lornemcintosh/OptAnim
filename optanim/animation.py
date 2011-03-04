@@ -119,9 +119,10 @@ class Animation(object):
 		contactSet = set()
 		for step in footsteps:
 		    startTime, intervalTime = [x * self.Length for x in step] #convert from fraction of length to real seconds
-		    endTime = startTime + intervalTime
-		    startFrame = int(round(startTime * self.FPS))
-		    endFrame = int(round(endTime * self.FPS))
+		    #TODO: goofy 'double rounding' here is to avoid small floating-point errors; use decimal package instead?
+		    intervalFrames = int(round(round(intervalTime * self.FPS, 1)))
+		    startFrame = int(round(round(startTime * self.FPS, 1)))
+		    endFrame = startFrame + intervalFrames
 		    contactSet = contactSet | set([x % self.get_frame_count() for x in range(startFrame, endFrame)])	#loop
 
 		contactStr = '{' + (', '.join(map(str, contactSet))) + '}'
@@ -151,7 +152,7 @@ class Animation(object):
 	if len(self.ObjectiveList) > 0:
 	    ret += 'minimize objective:\n'
 	    for i, obj in enumerate(self.ObjectiveList):
-		ret += '\t' + str(obj[1]) + ' * (' + obj[0] + ')'
+		ret += '\t' + str(obj[1]) + ' * (' + str(obj[0]) + ')'
 		if(i == len(self.ObjectiveList)-1):
 		    ret += ';\n'
 		else:
@@ -238,10 +239,12 @@ class Animation(object):
 		lowerBounds.append(self.get_frame_length()*3.0) #3 frame minimum
 		upperBounds.append(1.0)
 	    if optContacts:
-		n = len(self.Character.get_joints_contact()) * 2
-		startPoint.extend([0.5] * n)
-		lowerBounds.extend([0.0] * n)
-		upperBounds.extend([1.0] * n)
+		f = 1.0/len(self.Character.get_joints_contact())
+		for j,joint in enumerate(self.Character.get_joints_contact()):
+		    evenly = (j*f)+(f/2.0) #space the contacts evenly
+		    startPoint.extend([evenly, 0.5])
+		    lowerBounds.extend([0.0, 0.0])
+		    upperBounds.extend([1.0, 1.0])
 
 	    #optimize anim length and contact timings with CMA-ES
 	    es = cma.CMAEvolutionStrategy(startPoint, 1.0 / 3.0,
@@ -255,7 +258,6 @@ class Animation(object):
 		    curr_fit = numpy.NaN
 		    while curr_fit is numpy.NaN:
 			x = es.ask(1)[0]
-			#print(x)
 			if optLength:
 			    self.Length = x[0] * 3 #TODO: handle scaling better
 			if optContacts:
@@ -266,7 +268,7 @@ class Animation(object):
 			curr_fit = self._solve(solver)  #might return numpy.NaN
 		    fit.append(curr_fit)
 		    X.append(x)
-		    print '. ',
+		    print '.',
 		es.tell(X, fit)
 		print ''
 		es.printline(1)

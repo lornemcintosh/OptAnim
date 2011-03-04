@@ -32,6 +32,13 @@ class ConstraintPluginLoop(ConstraintPlugin):
 	retList.extend(character.get_newtonian_constraints(
 	    'LoopEnd', 'pTimeEnd-1', 'pTimeEnd', 'pTimeBegin', 't=pTimeEnd', [n*animation.Length for n in self.offset]))
 
+	#TODO: HACK: we also have to loop the contact joint 'zero velocity' constraints, so here goes!
+	for j in character.get_joints_contact():
+	    tRangeOn = 't in sTimeSteps_' + j.Name + 'On'
+	    worldpoint_t0 = world_xf(j.Point, [bq('pTimeBegin') for bq in j.Body.q])
+	    worldpoint_t1 = world_xf(j.Point, [bq('pTimeEnd') for bq in j.Body.q])
+	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_t0[0], worldpoint_t1[0] - self.offset[0]*animation.Length, TimeRange=tRangeOn + ' && t=pTimeBegin'))
+
 	return retList
 
 
