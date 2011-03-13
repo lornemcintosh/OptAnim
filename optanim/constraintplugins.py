@@ -16,7 +16,7 @@ class ConstraintPlugin(object):
 class ConstraintPluginLoop(ConstraintPlugin):
     '''A constraint plugin that enforces cyclic (looping) motion'''
 
-    def __init__(self, offset=[0, 0, 0]):
+    def __init__(self, offset=[0]*dof):
 	'''Constructor'''
 	self.offset = offset
 	ConstraintPlugin.__init__(self)
@@ -38,6 +38,7 @@ class ConstraintPluginLoop(ConstraintPlugin):
 	    worldpoint_t0 = world_xf(j.Point, [bq('pTimeBegin') for bq in j.Body.q])
 	    worldpoint_t1 = world_xf(j.Point, [bq('pTimeEnd') for bq in j.Body.q])
 	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_t0[0], worldpoint_t1[0] - self.offset[0]*animation.Length, TimeRange=tRangeOn + ' && t=pTimeBegin'))
+	    retList.append(ConstraintEq(j.Name + '_state_z_loop', worldpoint_t0[2], worldpoint_t1[2] - self.offset[2]*animation.Length, TimeRange=tRangeOn + ' && t=pTimeBegin'))
 
 	return retList
 

@@ -5,6 +5,7 @@ import re
 import subprocess
 
 import cma
+from exporters import *
 from constraint import *
 from constraintplugins import *
 from joints import *
@@ -15,7 +16,7 @@ class AnimationSpec(object):
     made. The same animation can often be used for multiple characters - even if
     their morphologies differ'''
 
-    def __init__(self, Name, Length=None, FPS=20):
+    def __init__(self, Name, Length=None, FPS=25):
 	'''Constructor'''
 	self.Name = Name
 	self.Length = Length
@@ -64,13 +65,21 @@ class AnimationSpec(object):
 		#create an animation instance
 		animName = self.Name + "_" + character.Name + "_" + str(index)
 		anim = Animation(animName, self.Length, self.FPS, character,
-				 self.ConstraintList + list(combination), self.ObjectiveList, self.ContactTimesDict);
+		    self.ConstraintList + list(combination), self.ObjectiveList, self.ContactTimesDict);
 		anim.optimize(solver)
 		if(anim.Solved):
 		    print('Solved! Objective = ' + str(anim.ObjectiveValue))
-		    print('Writing ' + animName + '.bvh')
-		    file = open(animName + '.bvh', 'w')
-		    file.write(anim.export_bvh())
+		    
+		    filename = animName + '.bvh'
+		    print('Writing ' + filename)
+		    file = open(filename, 'w')
+		    file.write(export_bvh(anim))
+		    file.close()
+
+		    filename = animName + '.skeleton.xml'
+		    print('Writing ' + filename)
+		    file = open(filename, 'w')
+		    file.write(export_ogre_skeleton_xml(anim))
 		    file.close()
 
 class Animation(object):
@@ -98,12 +107,11 @@ class Animation(object):
     def get_frame_count(self):
 	return int(round(self.Length * self.FPS))
 
-    def export_bvh(self):
+    '''def export_bvh(self):
 	if not self.Solved:
 	    raise BaseException("Animation must be solved before export")
-	#pass animation data to character, and let it write the bvh format
-	bvh = self.Character.export_bvh(self.SolutionValues, self.get_frame_count(), self.get_frame_length())
-	return bvh
+	bvh = export_bvh(self)
+	return bvh'''
 
     def _write_header(self):
 	ret = ''
@@ -170,6 +178,11 @@ class Animation(object):
 
 	ret += 'display solve_result;\n'
 	ret += 'display objective;\n'
+
+	#for interest we can output the values of individual objectives in the solution
+	for i, obj in enumerate(self.ObjectiveList):
+	    ret += 'printf "Objective%i: %f * %f = %f\\n",'+str(i)+','+str(obj[1])+','+str(obj[0])+','+str(obj[1])+' * '+str(obj[0])+';\n'
+
 	ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
 	ret += 'exit;\n'
 	return ret
@@ -196,28 +209,41 @@ class Animation(object):
 	    file.write(amplcmd)
 	    file.close()
 
-	#solve it with ampl
-	ampl = subprocess.Popen("ampl", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-	amplresult = ampl.communicate(amplcmd) #blocking call
+	amplresult = ''
+	try:
+	    #try to load cached solution
+	    file = open(self.Name + '.amplsol', 'r')
+	    amplresult = file.read();
+	    file.close()
+	except:
+	    #couldn't load cached solution file, we'll have to solve it
+	    #solve it with ampl
+	    ampl = subprocess.Popen("ampl", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+	    amplresult = ampl.communicate(amplcmd)[0] #blocking call
+
+	    #cache solution to a file
+	    file = open(self.Name + '.amplsol', 'w')
+	    file.write(amplresult)
+	    file.close()
 
 	#did it solve correctly?
-	self.Solved = (" = solved" in amplresult[0])
+	self.Solved = (" = solved" in amplresult)
 	if self.Solved:
-	    objectivematch = re.search("(?<=objective = )[0-9]*", amplresult[0])
+	    objectivematch = re.search("(?<=objective = )"+regex_float, amplresult)
 	    self.ObjectiveValue = float(objectivematch.group(0))
 
 	    #read the solution variables into a dict
 	    #this assumes AMPL will output them in order of ascending indices
 	    #myvar[0]... myvar[1]... myvar[2] etc.
-	    pattern = "\d+\s+'(\w+)\[(\d+)]'\s+([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
-	    matches = re.findall(pattern, amplresult[0])
+	    pattern = "\d+\s+'(\w+)\[(\d+)]'\s+"+regex_float
+	    matches = re.findall(pattern, amplresult)
 	    for match in matches:
 		if match[0] not in self.SolutionValues:
 		    self.SolutionValues[match[0]] = [float(match[2])]
 		else:
 		    self.SolutionValues[match[0]].append(float(match[2]))
 	#else:
-	    #print(amplresult[0])
+	    #print(amplresult)
 	return self.ObjectiveValue
 
 

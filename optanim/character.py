@@ -19,11 +19,13 @@ class Character(object):
 
     def add_joint(self, joint):
 	self.JointList.append(joint)
-	#for convenience add some links to parent/child bodies
-	#this assumes bodyA is "up" to the root
+	#for convenience add some links to parent/child bodies and joints
+	#this assumes bodyA is "up" to the root; this must be considered when creating joints
 	if isinstance(joint, JointRevolute):
 	    joint.BodyA.add_child(joint.BodyB)
 	    joint.BodyB.set_parent(joint.BodyA)
+	    joint.BodyA.add_child_joint(joint)
+	    joint.BodyB.set_parent_joint(joint)
 
     def get_joints_contact(self):
 	'''Returns a list of this characters contact joints'''
@@ -33,13 +35,9 @@ class Character(object):
 		retList.append(j)
 	return retList
 
-    def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd', offset=[0,0,0]):
+    def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd', offset=[0]*dof):
 	#timestep length
 	pH = sympy.Symbol("pH")
-
-	#gravity vector
-	#TODO: find a better place for gravity
-	g = sympy.Matrix([[0, -9.81, 0]])
 
 	#make the state vector q
 	qList = []
@@ -87,8 +85,8 @@ class Character(object):
 
 	constraints = []
 	for i, x in enumerate(q):
-	    a = (x(tNext) - 2 * x(tCurr) + x(tPrev) + offset[i % 3]) / (pH ** 2)
-	    fm = g[i % 3] + (Jlam[i] / m[i])
+	    a = (x(tNext) - 2 * x(tCurr) + x(tPrev) + offset[i % dof]) / (pH ** 2)
+	    fm = g[i % dof] + (Jlam[i] / m[i])
 	    afm = ConstraintEq(name + str(i), a, fm, tRange)
 	    constraints.append(afm)
 
@@ -97,19 +95,19 @@ class Character(object):
     def get_model(self):
 	model = ''
 
-	#write state variables
+	#state variables
 	for body in self.BodyList:
 	    for q in body.q:
 		model += ('var %s {sTimeSteps};\n' % q)
 	model += '\n'
 	
-	#write joint force variables
+	#joint force variables
 	for joint in self.JointList:
 	    for f in joint.f:
 		model += ('var %s {sTimeSteps};\n' % f)
 	model += '\n'
 	
-	#write newtonian constraints
+	#newtonian constraints
 	newtonList = self.get_newtonian_constraints('AFM')
 	for c in newtonList:
 	    model += (str(c))
@@ -121,84 +119,32 @@ class Character(object):
 		model += (str(eq))
 	    model += '\n'
 
+	#self-intersection constraints
+	for bodyA in self.BodyList:
+	    for bodyB in self.BodyList:
+		if bodyA is not bodyB:
+		    #endpoint A
+		    '''
+		    point = bodyB.ep_a()
+		    point[1] -= 0.05
+		    worldpoint = world_xf(point, [bq(t) for bq in bodyB.q])
+		    eq = bodyA.get_intersection_constraint(worldpoint)
+		    eq.Name += '_'+bodyB.Name+'_epa'
+		    model += (str(eq))
+
+		    #endpoint B
+		    point = bodyB.ep_b()
+		    point[1] += 0.05
+		    worldpoint = world_xf(point, [bq(t) for bq in bodyB.q])
+		    eq = bodyA.get_intersection_constraint(worldpoint)
+		    eq.Name += '_'+bodyB.Name+'_epb'
+		    model += (str(eq))
+		    '''
+
+		    #center point
+		    eq = bodyA.get_intersection_constraint([bq(t) for bq in bodyB.q[:3]])
+		    eq.Name += '_'+bodyB.Name+'_center'
+		    model += (str(eq))
+	    model += '\n'
+
 	return model
-
-    def get_bvh_hierarchy(self, root, level, rootoffset):
-	ret = ''
-	tab = '\t' * level
-	if level == 0:
-	    #special case for root
-	    ret += '%sROOT %s\n' % (tab, root.Name)
-	    ret += '%s{\n' % tab
-	    level += 1; tab = '\t' * level;
-	    ret += '%sOFFSET\t%f\t%f\t%f\n' % tuple([tab] + rootoffset)
-	    ret += '%sCHANNELS 6 Xposition Yposition Zposition Zrotation Xrotation Yrotation\n' % tab
-	else:
-	    #regular case
-	    ret += '%sJOINT %s\n' % (tab, root.Name)
-	    ret += '%s{\n' % tab
-	    level += 1; tab = '\t' * level;
-	    ret += '%sOFFSET\t%f\t%f\t%f\n' % tuple([tab] + [0, 0, -root.Parent.Length])
-	    ret += '%sCHANNELS 3 Zrotation Xrotation Yrotation\n' % tab
-	if len(root.ChildList) > 0:
-	    for child in root.ChildList:
-		ret += self.get_bvh_hierarchy(child, level, rootoffset)
-	else:
-	    ret += '%sEnd Site\n' % tab
-	    ret += '%s{\n' % tab
-	    level += 1; tab = '\t' * level;
-	    ret += '%sOFFSET\t%f\t%f\t%f\n' % tuple([tab] + [0, 0, -root.Length])
-	    level -= 1; tab = '\t' * level;
-	    ret += '%s}\n' % tab
-	level -= 1; tab = '\t' * level;
-	ret += '%s}\n' % tab
-	return ret
-
-    def get_bvh_motion(self, root, level, frame, data):
-	ret = ''
-	if level == 0:
-	    #special case for root
-	    #position of root
-	    q2 = data[str(root.q[2])][frame]
-	    q1 = data[str(root.q[1])][frame]
-	    q0 = data[str(root.q[0])][frame]
-	    x = (math.cos(q2 + (math.pi / 2.0)) * root.Length / 2.0) + q0
-	    y = (math.sin(q2 + (math.pi / 2.0)) * root.Length / 2.0) + q1
-	    ret += '%.8f %.8f %.8f ' % (0.0, x, y)
-
-	    #rotation of root
-	    r = q2 * (180.0 / math.pi)
-	    ret += '%.8f %.8f %.8f ' % (0.0, r, 0.0)
-	else:
-	    #regular case
-	    #rotation
-	    q2 = data[str(root.q[2])][frame]
-	    q2p = data[str(root.Parent.q[2])][frame]
-	    r = (-q2p + q2) * (180.0 / math.pi)
-	    ret += '%.8f %.8f %.8f ' % (0.0, r, 0.0)
-
-	level += 1;
-	for child in root.ChildList:
-	    ret += self.get_bvh_motion(child, level, frame, data)
-	level -= 1;
-
-	return ret
-
-    def export_bvh(self, animationData, frameCount, frameLength):
-	ret = ''
-	root = self.BodyList[0]
-
-	#write hierarchy
-	ret += 'HIERARCHY\n'
-	ret += self.get_bvh_hierarchy(root, 0, [0, 0, 1.57])	#TODO: magic number
-
-	#write motion
-	ret += 'MOTION\n'
-	ret += 'Frames: %i\n' % frameCount
-	ret += 'Frame Time: %f\n' % frameLength
-	for frame in range(0,frameCount):
-	    ret += self.get_bvh_motion(root, 0, frame, animationData)
-	    ret += '\n'
-	ret += '\n'
-
-	return ret
