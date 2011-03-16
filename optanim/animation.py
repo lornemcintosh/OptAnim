@@ -63,7 +63,7 @@ class AnimationSpec(object):
 	    for index, combination in enumerate(itertools.product(*self.ParamConstraintList)):
 
 		#create an animation instance
-		animName = self.Name + "_" + character.Name + "_" + str(index)
+		animName =  character.Name + "_" + self.Name + "_" + str(index)
 		anim = Animation(animName, self.Length, self.FPS, character,
 		    self.ConstraintList + list(combination), self.ObjectiveList, self.ContactTimesDict);
 		anim.optimize(solver)

@@ -142,7 +142,7 @@ class Character(object):
 		    '''
 
 		    #center point
-		    eq = bodyA.get_intersection_constraint([bq(t) for bq in bodyB.q[:3]])
+		    eq = bodyA.get_intersection_constraint([bq(t) for bq in bodyB.q[:3]], min(bodyB.Diameter))
 		    eq.Name += '_'+bodyB.Name+'_center'
 		    model += (str(eq))
 	    model += '\n'

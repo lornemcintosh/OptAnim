@@ -9,7 +9,7 @@ from optanim.rigidbody import *
 
 def main():
     #new character
-    character = Character('Aneta')
+    character = Character('Mortimer')
     #height=164cm
     #mass=51kg
     #bust=82cm
@@ -40,11 +40,11 @@ def main():
 
     joint_hip_left = JointRevolute("jhl", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.5, 0.7], [-1.5, 0.1]], 300)
     character.add_joint(joint_hip_left)
-    joint_knee_left = JointRevolute("jkl", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.8]], 300)
+    joint_knee_left = JointRevolute("jkl", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.8]], 200)
     character.add_joint(joint_knee_left)
     joint_hip_right = JointRevolute("jhr", torso, [0.0, torso.ep_b()[1], 0.1], thigh_right, thigh_right.ep_a(), [[-0.4, 0.8], [-0.7, 0.5], [-1.5, 0.1]], 300)
     character.add_joint(joint_hip_right)
-    joint_knee_right = JointRevolute("jkr", thigh_right, thigh_right.ep_b(), calf_right, calf_right.ep_a(), [[0,0], [0,0], [0, 2.8]], 300)
+    joint_knee_right = JointRevolute("jkr", thigh_right, thigh_right.ep_b(), calf_right, calf_right.ep_a(), [[0,0], [0,0], [0, 2.8]], 200)
     character.add_joint(joint_knee_right)
 
     #define an (unpowered) contact joint for each foot
@@ -55,7 +55,7 @@ def main():
     character.add_joint(joint_foot_right)
 
     #create an animimation
-    anim_locomote = AnimationSpec(Name='locomote', FPS=22)
+    anim_locomote = AnimationSpec(Name='locomote', FPS=30)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
@@ -66,7 +66,9 @@ def main():
     })
 
     #loop constraint with 3 movement speeds: 1.4 m/s (walk), 3.1 m/s (jog), 6.0 m/s (run)
-    anim_locomote.add_param_constraint([ConstraintPluginLoop([x, 0, 0, 0, 0, 0]) for x in [1.4, 3.1, 6.0]])
+    #anim_locomote.add_param_constraint([ConstraintPluginLoop([x, 0, 0, 0, 0, 0]) for x in [1.4, 3.1, 6.0]])
+    #anim_locomote.add_param_constraint([ConstraintPluginLoop([1.4, 0, 0, 0, x, 0]) for x in [0.0, math.pi/2.0, math.pi]])
+    anim_locomote.add_constraint(ConstraintPluginLoop([1.4, 0, 0, 0, 0, 0]))
 
     #stay above ground plane
     anim_locomote.add_constraint(ConstraintPluginGroundPlane())
@@ -77,6 +79,8 @@ def main():
     #paramConstraint = [Constraint("startAtOrigin", c=(torso.q[0](t)-0)**2,ub=1**2,timeRange='t=0'), '']	#example of an on/off parameterized constraint
     #anim_locomote.add_param_constraint(paramConstraint)
     anim_locomote.add_constraint(Constraint("startAtOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1 ** 2, TimeRange='t = 0')) #start within 1 unit of origin
+
+    #anim_locomote.add_constraint(Constraint("faceForwards", c=torso.q[4](t)**2, ub=0.35**2)) #+/- 20 degrees
 
     #minimize torques
     #we divide by time so animations of different lengths can be compared fairly
@@ -93,9 +97,9 @@ def main():
 	')) / ((pTimeEnd+1)**2)', 1.0)
 
     #minimize rotation of torso around y-axis (heading) from forwards
-    anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
-	str(torso.q[4]) + '[t]**2' +
-	')) / ((pTimeEnd+1)**2)', 5000.0)
+    #anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
+	#str(torso.q[4]) + '[t]**2' +
+	#')) / ((pTimeEnd+1)**2)', 5000.0)
 
     #anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
 	#world_xf(torso.ep_a(), [bq(t) for bq in torso.q])[1], 1.0)
