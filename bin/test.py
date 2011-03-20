@@ -10,17 +10,11 @@ from optanim.rigidbody import *
 def main():
     #new character
     character = Character('Mortimer')
-    #height=164cm
-    #mass=51kg
-    #bust=82cm
-    #waist=67cm
-    #hips=91cm
 
     #define some bodies in character space
     #x+- is character front, back (ventral, dorsal)
     #y+- is character up, down (cranial, caudal)
     #z+- is character right, left (lateral, lateral)
-
     torso = RigidBody("bto", 26.05, [0.21, 0.52, 0.27])
     character.add_body(torso)
     thigh_left = RigidBody("btl", 6.41, [0.16, 0.42, 0.16])
@@ -32,12 +26,7 @@ def main():
     calf_right = RigidBody("bcr", 3.13, [0.11, 0.43, 0.11])
     character.add_body(calf_right)
 
-    #define some powered revolute joints
-    '''joint_hip_left = JointRevolute("jhl", torso, [0.0, torso.ep_b()[1], 0.0], thigh_left, thigh_left.ep_a(), [[-0.7, 1.4], [-0.5, 0.7], [-1.5, 0.1]], 2500)
-    character.add_joint(joint_hip_left)
-    joint_knee_left = JointRevolute("jkl", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.5]], 2500)
-    character.add_joint(joint_knee_left)'''
-
+    #define some joints to constrain the bodies together
     joint_hip_left = JointRevolute("jhl", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.5, 0.7], [-1.5, 0.1]], 300)
     character.add_joint(joint_hip_left)
     joint_knee_left = JointRevolute("jkl", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.8]], 200)
@@ -54,8 +43,8 @@ def main():
     joint_foot_right = JointContact("jfr", calf_right, calf_right.ep_b(), Friction=0.5)
     character.add_joint(joint_foot_right)
 
-    #create an animimation
-    anim_locomote = AnimationSpec(Name='locomote', FPS=30)
+    #create an animimation specification
+    anim_locomote = AnimationSpec(Name='locomote', FPS=25)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
@@ -65,48 +54,61 @@ def main():
     	joint_foot_right:[(0.83310183, 0.52637255)]	#contact starting at x, lasting for y
     })
 
-    #loop constraint with 3 movement speeds: 1.4 m/s (walk), 3.1 m/s (jog), 6.0 m/s (run)
-    #anim_locomote.add_param_constraint([ConstraintPluginLoop([x, 0, 0, 0, 0, 0]) for x in [1.4, 3.1, 6.0]])
-    #anim_locomote.add_param_constraint([ConstraintPluginLoop([1.4, 0, 0, 0, x, 0]) for x in [0.0, math.pi/2.0, math.pi]])
+    #move forward on x-axis at average speed of 1.4m/s
     anim_locomote.add_constraint(ConstraintPluginLoop([1.4, 0, 0, 0, 0, 0]))
 
     #stay above ground plane
     anim_locomote.add_constraint(ConstraintPluginGroundPlane())
 
-    #this is a test of a parameterized constraint
-    #"start within +/-1 units of X, where X is 2,4,6,8"
-    #paramConstraint = [Constraint("startAt"+str(x), c=(torso.q[0](t)-x)**2,ub=1**2,timeRange='t=0') for x in range(2,10,2)]
-    #paramConstraint = [Constraint("startAtOrigin", c=(torso.q[0](t)-0)**2,ub=1**2,timeRange='t=0'), '']	#example of an on/off parameterized constraint
-    #anim_locomote.add_param_constraint(paramConstraint)
-    anim_locomote.add_constraint(Constraint("startAtOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1 ** 2, TimeRange='t = 0')) #start within 1 unit of origin
+    #start within 1 unit of origin
+    anim_locomote.add_constraint(Constraint("startAtOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1 ** 2, TimeRange='t = 0'))
 
-    #anim_locomote.add_constraint(Constraint("faceForwards", c=torso.q[4](t)**2, ub=0.35**2)) #+/- 20 degrees
+    #face 0.0, 0.785, 1.571, 2.356, 3.142 rad, to a tolerance of +/- ~0.35 rad
+    #we only do a half-circle, since animations can be mirrored
+    faceDirConstraints = [Constraint("faceDirection", c=(torso.q[4](t) - x)**2, ub=0.35**2) for x in [i*math.pi/4 for i in range(0,5)]]
+    anim_locomote.add_param_constraint(faceDirConstraints)
 
     #minimize torques
     #we divide by time so animations of different lengths can be compared fairly
-    anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
-	str(joint_hip_left.f[3]) + '[t]**2 + ' +
-	str(joint_hip_left.f[4]) + '[t]**2 + ' +
-	str(joint_hip_left.f[5]) + '[t]**2 + ' +
-	str(joint_knee_left.f[5]) + '[t]**2 + ' +
+    anim_locomote.add_objective('sum {t in sTimeSteps} (' +
+	ampl(joint_hip_left.f[3](t)**2 +
+	joint_hip_left.f[4](t)**2 +
+	joint_hip_left.f[5](t)**2 +
+	joint_knee_left.f[5](t)**2 +
 
-	str(joint_hip_right.f[3]) + '[t]**2 + ' +
-	str(joint_hip_right.f[4]) + '[t]**2 + ' +
-	str(joint_hip_right.f[5]) + '[t]**2 + ' +
-	str(joint_knee_right.f[5]) + '[t]**2' +
-	')) / ((pTimeEnd+1)**2)', 1.0)
+	joint_hip_right.f[3](t)**2 +
+	joint_hip_right.f[4](t)**2 +
+	joint_hip_right.f[5](t)**2 +
+	joint_knee_right.f[5](t)**2) +
+	')', 0.01)
 
-    #minimize rotation of torso around y-axis (heading) from forwards
-    #anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
-	#str(torso.q[4]) + '[t]**2' +
-	#')) / ((pTimeEnd+1)**2)', 5000.0)
+    #minimize rotation of torso on x and z axes (people tend to walk upright)
+    anim_locomote.add_objective('sum {t in sTimeSteps} (' +
+	ampl(torso.q[3](t)**2 + torso.q[5](t)**2) +
+	')', 300.0)
 
-    #anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
-	#world_xf(torso.ep_a(), [bq(t) for bq in torso.q])[1], 1.0)
-    
-    '''anim_locomote.add_objective('(sum {t in sTimeSteps} (' +
-	str(joint_foot_left.f[1]) + '[t]**2 + ' +
-	str(joint_foot_right.f[1]) + '[t]**2)) / ((pTimeEnd+1)**2)', 4.0)'''
+    #faceObjs = [('sum {t in sTimeSteps} ('+ampl((torso.q[4](t) - x)**2)+')', 400.0) for x in [i*math.pi/4 for i in range(0,5)]]
+    #anim_locomote.add_param_objective(faceObjs)
+
+    #minimize acceleration of the torso (so brain is not jostled, and eyes can see etc.)
+    '''torsoPrev = [bq(t-1) for bq in torso.q[:3]]
+    torsoCurr = [bq(t) for bq in torso.q[:3]]
+    torsoNext = [bq(t+1) for bq in torso.q[:3]]
+    for i in range(3):
+	vNext = torsoNext[i] - torsoCurr[i]
+	vPrev = torsoCurr[i] - torsoPrev[i]
+	a = vNext - vPrev
+	anim_locomote.add_objective('sum {t in sTimeSteps: t>pTimeBegin && t<pTimeEnd} ('+ampl(a**2)+')', 200000.0)'''
+
+    '''headPointPrev = world_xf(torso.ep_a(), [bq(t-1) for bq in torso.q])
+    headPointCurr = world_xf(torso.ep_a(), [bq(t) for bq in torso.q])
+    headPointNext = world_xf(torso.ep_a(), [bq(t+1) for bq in torso.q])
+
+    for i in range(3):
+	vNext = headPointNext[i] - headPointCurr[i]
+	vPrev = headPointCurr[i] - headPointPrev[i]
+	a = vNext - vPrev
+	anim_locomote.add_objective('sum {t in sTimeSteps: t>pTimeBegin && t<pTimeEnd} ('+ampl(a**2)+')', 200000.0)'''
 
     anim_locomote.add_character(character)
     anim_locomote.generate('.', 'ipopt')

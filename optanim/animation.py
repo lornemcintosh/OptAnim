@@ -3,7 +3,7 @@ import itertools
 import numpy
 import re
 import subprocess
-
+import time
 import cma
 from exporters import *
 from constraint import *
@@ -22,9 +22,13 @@ class AnimationSpec(object):
 	self.Length = Length
 	self.FPS = FPS
 	self.ContactTimesDict = None
+
 	self.ConstraintList = []
 	self.ParamConstraintList = []
+
 	self.ObjectiveList = []
+	self.ParamObjectiveList = []
+
 	self.CharacterList = []
 
     def set_length(self, length):
@@ -47,41 +51,52 @@ class AnimationSpec(object):
 	self.ParamConstraintList.append(c)
 
     def add_objective(self, obj, weight):
-	self.ObjectiveList.append([obj, weight])
+	self.ObjectiveList.append((obj, weight))
+
+    def add_param_objective(self, obj):
+	'''Add a set of parameterized objectives -- an animation will be
+	produced for every unique combination of objectives from these sets'''
+	self.ParamObjectiveList.append(obj)
 
     def generate(self, outdir, solver):
 	print "Generating %s..." % self.Name
 
 	#print a helpful message about the number of combinations
 	combinations = len(self.CharacterList)
-	for i, c in enumerate(self.ParamConstraintList):
-	    combinations *= len(c)
+	for c in self.ParamConstraintList:
+	    combinations *= max(len(c), 1)
+	for o in self.ParamObjectiveList:
+	    combinations *= max(len(o), 1)
 	print "There will be %i combinations" % combinations
 
 	#for each combination of character and parameters
 	for character in self.CharacterList:
-	    for index, combination in enumerate(itertools.product(*self.ParamConstraintList)):
+	    for cindex, ccomb in enumerate(itertools.product(*self.ParamConstraintList)):
+		for oindex, ocomb in enumerate(itertools.product(*self.ParamObjectiveList)):
 
-		#create an animation instance
-		animName =  character.Name + "_" + self.Name + "_" + str(index)
-		anim = Animation(animName, self.Length, self.FPS, character,
-		    self.ConstraintList + list(combination), self.ObjectiveList, self.ContactTimesDict);
-		anim.optimize(solver)
-		if(anim.Solved):
-		    print('Solved! Objective = ' + str(anim.ObjectiveValue))
-		    
-		    filename = animName + '.bvh'
-		    print('Writing ' + filename)
-		    file = open(filename, 'w')
-		    file.write(export_bvh(anim))
-		    file.close()
+		    #create an animation instance
+		    animName =  character.Name + "_" + self.Name + "_" + str(cindex) + "_" + str(oindex)
+		    anim = Animation(animName, self.Length, self.FPS, character,
+			self.ConstraintList + list(ccomb), self.ObjectiveList + list(ocomb), self.ContactTimesDict);
+		    start_time = float(time.time())
+		    anim.optimize(solver)
+		    elapsed_time = time.time() - start_time
+		    if(anim.Solved):
+			print('Solved! (took %f seconds, Objective = %f)' % (elapsed_time, anim.ObjectiveValue))
 
-		    filename = animName + '.skeleton.xml'
-		    print('Writing ' + filename)
-		    file = open(filename, 'w')
-		    file.write(export_ogre_skeleton_xml(anim))
-		    file.close()
+			filename = animName + '.bvh'
+			print('Writing ' + filename)
+			file = open(filename, 'w')
+			file.write(export_bvh(anim))
+			file.close()
 
+			filename = animName + '.skeleton.xml'
+			print('Writing ' + filename)
+			file = open(filename, 'w')
+			file.write(export_ogre_skeleton_xml(anim))
+			file.close()
+		    else:
+			print('Failed to solve! (took %f seconds)' % elapsed_time)
 class Animation(object):
     '''Represents a specific character animation. The character and constraints
     etc. are set in stone. If solved, it also stores the optimization results (the
@@ -158,11 +173,11 @@ class Animation(object):
 	ret = ''
 	#write weighted objectives
 	if len(self.ObjectiveList) > 0:
-	    ret += 'minimize objective:\n'
+	    ret += 'minimize objective: (\n'
 	    for i, obj in enumerate(self.ObjectiveList):
 		ret += '\t' + str(obj[1]) + ' * (' + str(obj[0]) + ')'
 		if(i == len(self.ObjectiveList)-1):
-		    ret += ';\n'
+		    ret += ') / (pTimeEnd+1);\n'
 		else:
 		    ret += ' +\n'
 	return ret
@@ -172,7 +187,7 @@ class Animation(object):
 	ret = 'option reset_initial_guesses 1;\n'
 	#ret += 'option show_stats 1;\n'
 	ret += 'option solver ' + solver + ';\n'
-	ret += 'option ipopt_options \'print_level=0\';\n' #TODO: what about other solvers?
+	ret += 'option ipopt_options \'max_iter=4000 print_level=0\';\n' #TODO: what about other solvers?
 	ret += 'solve;\n'
 	ret += '\n'
 

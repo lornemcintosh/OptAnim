@@ -36,9 +36,6 @@ class Character(object):
 	return retList
 
     def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd', offset=[0]*dof):
-	#timestep length
-	pH = sympy.Symbol("pH")
-
 	#make the state vector q
 	qList = []
 	for body in self.BodyList:
@@ -65,7 +62,7 @@ class Character(object):
 	jc = sympy.Matrix([x.c for x in jcList])  #take only constraint (not bounds)
 
 	#----------------------------------------------------
-	#TODO: FIXME: this is dumb, but jacobian doesn't work with functions,
+	#TODO: FIXME: this is dumb, but jacobian() doesn't work with functions,
 	# so we take off the (t), and then add it back afterwards
 	for i in q:
 	    jc = jc.subs(i(t), i)
@@ -85,7 +82,9 @@ class Character(object):
 
 	constraints = []
 	for i, x in enumerate(q):
-	    a = (x(tNext) - 2 * x(tCurr) + x(tPrev) + offset[i % dof]) / (pH ** 2)
+	    vNext = x(tNext) - x(tCurr)
+	    vPrev = x(tCurr) - x(tPrev) - offset[i % dof]
+	    a = (vNext - vPrev)/(pH**2)
 	    fm = g[i % dof] + (Jlam[i] / m[i])
 	    afm = ConstraintEq(name + str(i), a, fm, tRange)
 	    constraints.append(afm)

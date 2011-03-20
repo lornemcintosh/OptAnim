@@ -82,9 +82,11 @@ class JointContact(Joint):
 	self.Point = Point
 	self.Friction = Friction
 	self.f = [
-	    sympy.Symbol(Name + "_fx"),
+	    sympy.Symbol(Name + "_fx"), #translational
 	    sympy.Symbol(Name + "_fy"),
-	    sympy.Symbol(Name + "_fz")]
+	    sympy.Symbol(Name + "_fz"),
+	    
+	    sympy.Symbol(Name + "_fry")] #rotational
 
 	print 'new '+str(self)
     
@@ -101,6 +103,8 @@ class JointContact(Joint):
 	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], TimeRange=tRangeOn + ' && t>pTimeBegin'))
 	retList.append(ConstraintEq(self.Name + '_state_y', worldpoint_t0[1], TimeRange=tRangeOn))
 	retList.append(ConstraintEq(self.Name + '_state_z', worldpoint_t0[2], worldpoint_t1[2], TimeRange=tRangeOn + ' && t>pTimeBegin'))
+
+	retList.append(ConstraintEq(self.Name + '_state_ry', self.Body.q[4](t), self.Body.q[4](t-1), TimeRange=tRangeOn + ' && t>pTimeBegin'))
 	return retList
 
     def get_force_constraints(self):

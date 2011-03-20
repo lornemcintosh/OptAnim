@@ -10,6 +10,9 @@ dof = int(6) #3 translational + 3 rotational
 #TODO: find a better place for time symbol?
 t = sympy.Symbol("t")
 
+#timestep length
+pH = sympy.Symbol("pH")
+
 #gravity vector
 #TODO: find a better place for gravity?
 g = sympy.Matrix([[0, -9.81, 0, 0, 0, 0]])
