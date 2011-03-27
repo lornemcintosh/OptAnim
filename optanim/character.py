@@ -35,7 +35,10 @@ class Character(object):
 		retList.append(j)
 	return retList
 
-    def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd', offset=[0]*dof):
+    def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd',
+	offsetPrev=[0]*dof, offsetNext=[0]*dof,
+	rotPrev=[0]*3, rotNext=[0]*3):
+
 	#make the state vector q
 	qList = []
 	for body in self.BodyList:
@@ -81,13 +84,52 @@ class Character(object):
 	#----------------------------------------------------
 
 	constraints = []
-	for i, x in enumerate(q):
-	    vNext = x(tNext) - x(tCurr)
-	    vPrev = x(tCurr) - x(tPrev) - offset[i % dof]
-	    a = (vNext - vPrev)/(pH**2)
-	    fm = g[i % dof] + (Jlam[i] / m[i])
-	    afm = ConstraintEq(name + str(i), a, fm, tRange)
-	    constraints.append(afm)
+	rotCenterWorld = sympy.Matrix([0,0,0])
+
+	for b,body in enumerate(self.BodyList):
+	    #make lists for next, current, and previous q's
+	    pPrev = [x(tPrev) for x in body.q]
+	    pCurr = [x(tCurr) for x in body.q]
+	    pNext = [x(tNext) for x in body.q]
+
+	    #rotate body positions around rotCenter
+	    rotmatPrev = euler_to_matrix(rotPrev)
+	    pPrev[:3] = (rotmatPrev * (sympy.Matrix(pPrev[:3]) - rotCenterWorld)) + rotCenterWorld
+	    rotmatNext = euler_to_matrix(rotNext)
+	    pNext[:3] = (rotmatNext * (sympy.Matrix(pNext[:3]) - rotCenterWorld)) + rotCenterWorld
+
+	    #also the bodies themselves rotate
+	    pPrev[3:] = [x+rotPrev[k] for k,x in enumerate(pPrev[3:])]
+	    pNext[3:] = [x+rotNext[k] for k,x in enumerate(pNext[3:])]
+
+	    #add simple translational offset to body positions / rotations
+	    pPrev = [x+offsetPrev[k] for k,x in enumerate(pPrev)]
+	    pNext = [x+offsetNext[k] for k,x in enumerate(pNext)]
+
+	    #calculate velocities
+	    vPrev = [0]*dof; vNext = [0]*dof
+	    for k,x in enumerate(body.q):
+		vPrev[k] = pCurr[k] - pPrev[k]
+		vNext[k] = pNext[k] - pCurr[k]
+
+	    #rotate velocities if necessary
+	    '''rotPrev = euler_to_matrix(rotvelPrev)
+	    vpt = sympy.Matrix(vPrev[:3])
+	    vpr = sympy.Matrix(vPrev[3:])
+	    vPrev[:3] = rotPrev * vpt
+	    vPrev[3:] = rotPrev * vpr
+	    rotNext = euler_to_matrix(rotvelNext)
+	    vnt = sympy.Matrix(vNext[:3])
+	    vnr = sympy.Matrix(vNext[3:])
+	    vNext[:3] = rotNext * vnt
+	    vNext[3:] = rotNext * vnr'''
+	    
+	    for k,x in enumerate(body.q):
+		a = (vNext[k] - vPrev[k])/(pH**2)
+		a = a.evalf()
+		fm = g[k] + (Jlam[b*dof+k] / m[b*dof+k])
+		afm = ConstraintEq(name + '_' + body.Name+ '_' + str(k), a, fm, tRange)
+		constraints.append(afm)
 
 	return constraints
 

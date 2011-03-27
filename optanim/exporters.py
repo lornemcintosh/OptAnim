@@ -23,22 +23,15 @@ def export_ogre_skeleton_xml(anim):
 	else:
 	    offset = [ body.ParentJoint.PointA[i] - body.Parent.ep_a()[i] for i in range(len(body.Parent.ep_a()))]
 	    position.set("x", "%.8f" % offset[0])
-	    position.set("y", "%.8f" % -offset[1])
+	    position.set("y", "%.8f" % offset[1])
 	    position.set("z", "%.8f" % offset[2])
 
 	rotation = ET.SubElement(bone, "rotation")
-	if i == 0:
-	    rotation.set("angle", "%.8f" % math.pi)
-	    axis = ET.SubElement(rotation, "axis")
-	    axis.set("x", "%.8f" % 0.0)
-	    axis.set("y", "%.8f" % 0.0)
-	    axis.set("z", "%.8f" % 1.0)
-	else:
-	    rotation.set("angle", "%.8f" % 0.0)
-	    axis = ET.SubElement(rotation, "axis")
-	    axis.set("x", "%.8f" % 1.0)
-	    axis.set("y", "%.8f" % 0.0)
-	    axis.set("z", "%.8f" % 0.0)
+	rotation.set("angle", "%.8f" % 0.0)
+	axis = ET.SubElement(rotation, "axis")
+	axis.set("x", "%.8f" % 1.0)
+	axis.set("y", "%.8f" % 0.0)
+	axis.set("z", "%.8f" % 0.0)
 
     bonehierarchy = ET.SubElement(root, "bonehierarchy")
     for i, joint in enumerate(anim.Character.JointList):
@@ -78,14 +71,11 @@ def export_ogre_skeleton_xml(anim):
 	    translate.set("y", "%.8f" % bonepos[1])
 	    translate.set("z", "%.8f" % bonepos[2])
 
-	    #euler = [anim.SolutionValues[str(body.q[x])][frame] for x in range(3,dof)]
-	    #axisangle = euler_to_axisangle(euler)
-	    #axisangle = map(float, axisangle)
 	    axisangle = [0.0]*4
 	    if i == 0:
 		rootEuler = [anim.SolutionValues[str(body.q[x])][frame] for x in range(3,dof)]
 		rootMat = euler_to_matrix(rootEuler).evalf()
-		#convert to axis angle... uh, by way of a quat :)
+		#convert to axis angle... by way of a quat :)
 		quat = matrix_to_quat(rootMat)
 		axisangle = quat_to_axisangle(quat)
 	    else:
@@ -104,8 +94,8 @@ def export_ogre_skeleton_xml(anim):
 	    rotate = ET.SubElement(keyframe, "rotate")
 	    rotate.set("angle", "%.8f" % axisangle[3])
 	    axis = ET.SubElement(rotate, "axis")
-	    axis.set("x", "%.8f" % -axisangle[0])
-	    axis.set("y", "%.8f" % -axisangle[1])   #TODO: negatives here? Or do it in quat, or axisangle? :S
+	    axis.set("x", "%.8f" % axisangle[0])
+	    axis.set("y", "%.8f" % axisangle[1])
 	    axis.set("z", "%.8f" % axisangle[2])
 
     #TODO: HACK: oh the lengths I'll go to for some pretty printing

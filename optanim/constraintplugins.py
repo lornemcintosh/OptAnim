@@ -16,9 +16,10 @@ class ConstraintPlugin(object):
 class ConstraintPluginLoop(ConstraintPlugin):
     '''A constraint plugin that enforces cyclic (looping) motion'''
 
-    def __init__(self, offset=[0]*dof):
+    def __init__(self, offset=[0]*dof, angVel=[0]*3):
 	'''Constructor'''
 	self.offset = offset
+	self.angVel = angVel
 	ConstraintPlugin.__init__(self)
 
     def get_constraints(self, animation, character):
@@ -26,19 +27,38 @@ class ConstraintPluginLoop(ConstraintPlugin):
 
 	#first frame connects to last
 	retList.extend(character.get_newtonian_constraints(
-	    'LoopBegin', 'pTimeEnd', 'pTimeBegin', 'pTimeBegin+1', 't=pTimeBegin', [-n*animation.Length for n in self.offset]))
+	    'LoopBegin', 'pTimeEnd', 'pTimeBegin', 'pTimeBegin+1', 't=pTimeBegin',
+	    [-n*animation.Length for n in self.offset], [0]*dof,
+	    [-n*animation.Length for n in self.angVel], [0]*3))
 
 	#last frame connects to first
 	retList.extend(character.get_newtonian_constraints(
-	    'LoopEnd', 'pTimeEnd-1', 'pTimeEnd', 'pTimeBegin', 't=pTimeEnd', [n*animation.Length for n in self.offset]))
+	    'LoopEnd', 'pTimeEnd-1', 'pTimeEnd', 'pTimeBegin', 't=pTimeEnd',
+	    [0]*dof, [n*animation.Length for n in self.offset],
+	    [0]*3, [n*animation.Length for n in self.angVel]))
 
-	#TODO: HACK: we also have to loop the contact joint 'zero velocity' constraints, so here goes!
+	#TODO: HACK: we also have to loop the contact joint 'zero velocity' constraints
+	#this code is nearly identical to that in Character.get_newtonian_constraints()
 	for j in character.get_joints_contact():
 	    tRangeOn = 't in sTimeSteps_' + j.Name + 'On'
-	    worldpoint_t0 = world_xf(j.Point, [bq('pTimeBegin') for bq in j.Body.q])
-	    worldpoint_t1 = world_xf(j.Point, [bq('pTimeEnd') for bq in j.Body.q])
-	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_t0[0], worldpoint_t1[0] - self.offset[0]*animation.Length, TimeRange=tRangeOn + ' && t=pTimeBegin'))
-	    retList.append(ConstraintEq(j.Name + '_state_z_loop', worldpoint_t0[2], worldpoint_t1[2] - self.offset[2]*animation.Length, TimeRange=tRangeOn + ' && t=pTimeBegin'))
+	    worldpoint_Begin = world_xf(j.Point, [bq('pTimeBegin') for bq in j.Body.q])
+	    worldpoint_End = world_xf(j.Point, [bq('pTimeEnd') for bq in j.Body.q])
+
+	    #rotate body positions around rotCenter
+	    rotCenterWorld = sympy.Matrix([0,0,0])
+	    rotmatPrev = euler_to_matrix([n*animation.Length for n in self.angVel])
+	    worldpoint_Begin = (rotmatPrev * (sympy.Matrix(worldpoint_Begin) - rotCenterWorld)) + rotCenterWorld
+
+	    #add simple translational offset to body positions
+	    worldpoint_Begin = [x+self.offset[k]*animation.Length for k,x in enumerate(worldpoint_Begin)]
+
+	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_Begin[0], worldpoint_End[0], TimeRange=tRangeOn + ' && t=pTimeBegin'))
+	    retList.append(ConstraintEq(j.Name + '_state_z_loop', worldpoint_Begin[2], worldpoint_End[2], TimeRange=tRangeOn + ' && t=pTimeBegin'))
+
+	    #also loop the contact joint 'zero angular velocity' constraint
+	    retList.append(ConstraintEq(j.Name + '_state_ry_loop',
+		j.Body.q[4]('pTimeBegin') + (self.angVel[1]*animation.Length) + (self.offset[4]*animation.Length),
+		j.Body.q[4]('pTimeEnd'), TimeRange=tRangeOn + ' && t=pTimeBegin'))
 
 	return retList
 

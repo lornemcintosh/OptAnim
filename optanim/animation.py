@@ -73,11 +73,10 @@ class AnimationSpec(object):
 	for character in self.CharacterList:
 	    for cindex, ccomb in enumerate(itertools.product(*self.ParamConstraintList)):
 		for oindex, ocomb in enumerate(itertools.product(*self.ParamObjectiveList)):
-
 		    #create an animation instance
 		    animName =  character.Name + "_" + self.Name + "_" + str(cindex) + "_" + str(oindex)
 		    anim = Animation(animName, self.Length, self.FPS, character,
-			self.ConstraintList + list(ccomb), self.ObjectiveList + list(ocomb), self.ContactTimesDict);
+			self.ConstraintList + list(itertools.chain.from_iterable(ccomb)), self.ObjectiveList + list(ocomb), self.ContactTimesDict);
 		    start_time = float(time.time())
 		    anim.optimize(solver)
 		    elapsed_time = time.time() - start_time
@@ -85,13 +84,19 @@ class AnimationSpec(object):
 			print('Solved! (took %f seconds, Objective = %f)' % (elapsed_time, anim.ObjectiveValue))
 
 			filename = animName + '.bvh'
-			print('Writing ' + filename)
+			print('Writing: %s,' % filename),
 			file = open(filename, 'w')
 			file.write(export_bvh(anim))
 			file.close()
 
+			filename = animName + '.flat.bvh'
+			print('%s,' % filename),
+			file = open(filename, 'w')
+			file.write(export_bvh_flat(anim))
+			file.close()
+
 			filename = animName + '.skeleton.xml'
-			print('Writing ' + filename)
+			print('%s' % filename)
 			file = open(filename, 'w')
 			file.write(export_ogre_skeleton_xml(anim))
 			file.close()

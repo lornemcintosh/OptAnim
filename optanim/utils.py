@@ -119,7 +119,8 @@ class AmplPrinter(sympy.printing.str.StrPrinter):
 	#TODO: HACK: we need to put [] around arguments of time-dependent variables,
 	#but keep () around the arguments of normal functions like cos()
 	#this heuristic is hacky... and will break in obvious cases like cos(6)
-	if(len(expr.args) == 1 and not expr.args[0].is_Function):
+	funcList = ['cos', 'sin']
+	if (len(expr.args) == 1 and not expr.args[0].is_Function) and expr.func.__name__ not in funcList:
 	    #first argument is not a function; this might be a time-dep var
 	    return expr.func.__name__ + "[%s]" % self.stringify(expr.args, ", ")
 	else:
