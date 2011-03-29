@@ -36,8 +36,7 @@ class Character(object):
 	return retList
 
     def get_newtonian_constraints(self, name, tPrev=t-1, tCurr=t, tNext=t+1, tRange='pTimeBegin < t < pTimeEnd',
-	offsetPrev=[0]*dof, offsetNext=[0]*dof,
-	rotPrev=[0]*3, rotNext=[0]*3):
+	offset_func_prev=None, offset_dir_prev=0, offset_func_next=None, offset_dir_next=0):
 
 	#make the state vector q
 	qList = []
@@ -84,7 +83,6 @@ class Character(object):
 	#----------------------------------------------------
 
 	constraints = []
-	rotCenterWorld = sympy.Matrix([0,0,0])
 
 	for b,body in enumerate(self.BodyList):
 	    #make lists for next, current, and previous q's
@@ -92,37 +90,17 @@ class Character(object):
 	    pCurr = [x(tCurr) for x in body.q]
 	    pNext = [x(tNext) for x in body.q]
 
-	    #rotate body positions around rotCenter
-	    rotmatPrev = euler_to_matrix(rotPrev)
-	    pPrev[:3] = (rotmatPrev * (sympy.Matrix(pPrev[:3]) - rotCenterWorld)) + rotCenterWorld
-	    rotmatNext = euler_to_matrix(rotNext)
-	    pNext[:3] = (rotmatNext * (sympy.Matrix(pNext[:3]) - rotCenterWorld)) + rotCenterWorld
-
-	    #also the bodies themselves rotate
-	    pPrev[3:] = [x+rotPrev[k] for k,x in enumerate(pPrev[3:])]
-	    pNext[3:] = [x+rotNext[k] for k,x in enumerate(pNext[3:])]
-
-	    #add simple translational offset to body positions / rotations
-	    pPrev = [x+offsetPrev[k] for k,x in enumerate(pPrev)]
-	    pNext = [x+offsetNext[k] for k,x in enumerate(pNext)]
+	    #do offsets if necessary
+	    if offset_func_prev is not None:
+		pPrev = offset_func_prev(pPrev, offset_dir_prev)
+	    if offset_func_next is not None:
+		pNext = offset_func_next(pNext, offset_dir_next)
 
 	    #calculate velocities
 	    vPrev = [0]*dof; vNext = [0]*dof
 	    for k,x in enumerate(body.q):
 		vPrev[k] = pCurr[k] - pPrev[k]
 		vNext[k] = pNext[k] - pCurr[k]
-
-	    #rotate velocities if necessary
-	    '''rotPrev = euler_to_matrix(rotvelPrev)
-	    vpt = sympy.Matrix(vPrev[:3])
-	    vpr = sympy.Matrix(vPrev[3:])
-	    vPrev[:3] = rotPrev * vpt
-	    vPrev[3:] = rotPrev * vpr
-	    rotNext = euler_to_matrix(rotvelNext)
-	    vnt = sympy.Matrix(vNext[:3])
-	    vnr = sympy.Matrix(vNext[3:])
-	    vNext[:3] = rotNext * vnt
-	    vNext[3:] = rotNext * vnr'''
 	    
 	    for k,x in enumerate(body.q):
 		a = (vNext[k] - vPrev[k])/(pH**2)

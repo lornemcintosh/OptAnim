@@ -262,6 +262,17 @@ class Animation(object):
 		    self.SolutionValues[match[0]] = [float(match[2])]
 		else:
 		    self.SolutionValues[match[0]].append(float(match[2]))
+
+	    #if looped, append an extra frame (identical to first frame, but offset)
+	    for c in self.ConstraintList:
+		if isinstance(c, ConstraintPluginLoop):
+		    frame = 0 #copy first frame
+		    for b in self.Character.BodyList:
+			q = [self.SolutionValues[str(x)][frame] for x in b.q]
+			q = c.get_offset(q, 1) #apply offset
+			q = map(float, q)
+			for k,bq in enumerate(b.q):
+			    self.SolutionValues[str(bq)].append(q[k]) #append extra frame
 	#else:
 	    #print(amplresult)
 	return self.ObjectiveValue

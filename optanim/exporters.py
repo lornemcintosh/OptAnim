@@ -50,7 +50,8 @@ def export_ogre_skeleton_xml(anim):
 	track = ET.SubElement(tracks, "track")
 	track.set("bone", str(body.Name))
 	keyframes = ET.SubElement(track, "keyframes")
-	for frame in range(anim.get_frame_count()):
+	#for frame in range(anim.get_frame_count()):
+	for frame in range(len(anim.SolutionValues.items()[0][1])):
 	    keyframe = ET.SubElement(keyframes, "keyframe")
 	    keyframe.set("time", str(frame * anim.get_frame_length()))
 
@@ -184,7 +185,8 @@ def export_bvh(anim):
     ret += 'MOTION\n'
     ret += 'Frames: %i\n' % anim.get_frame_count()
     ret += 'Frame Time: %f\n' % anim.get_frame_length()
-    for frame in range(0, anim.get_frame_count()):
+    #for frame in range(anim.get_frame_count()):
+    for frame in range(len(anim.SolutionValues.items()[0][1])):
 	ret += _get_bvh_motion(anim.Character, root, 0, frame, anim.SolutionValues)
 	ret += '\n'
     ret += '\n'
@@ -220,7 +222,8 @@ def export_bvh_flat(anim):
     ret += 'MOTION\n'
     ret += 'Frames: %i\n' % anim.get_frame_count()
     ret += 'Frame Time: %f\n' % anim.get_frame_length()
-    for frame in range(0, anim.get_frame_count()):
+    #for frame in range(0, anim.get_frame_count()):
+    for frame in range(len(anim.SolutionValues.items()[0][1])):
 	ret += '%f %f %f %f %f %f ' % (0, 0, 0, 0, 0, 0) #root doesn't move
 	for body in anim.Character.BodyList:
 	    q = [anim.SolutionValues[str(body.q[x])][frame] for x in range(dof)]

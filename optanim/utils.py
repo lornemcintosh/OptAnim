@@ -53,6 +53,7 @@ def matrix_to_quat(m):
     return [w, x, y, z]
 
 def euler_to_matrix(euler):
+    '''Converts 3 euler angles XYZ to a rotation matrix'''
     rx, ry, rz = euler
     X = sympy.Matrix([
 		     [1,	0,	0],
@@ -72,19 +73,11 @@ def euler_to_matrix(euler):
     return X * Y * Z
 
 def matrix_to_euler(mat):
-    x = y = z = 0
-    if float(-mat[0, 2]) != 1.0 and float(-mat[0, 2]) != -1.0:
-	y = -sympy.asin(-mat[0, 2])
-	x = sympy.atan2(-mat[1, 2] / sympy.cos(y), mat[2, 2] / sympy.cos(y))
-	z = sympy.atan2(-mat[0, 1] / sympy.cos(y), mat[0, 0] / sympy.cos(y))
-    else:
-	z = 0
-	if(float(-mat[0, 2]) == -1):
-	    y = sympy.pi / 2.0
-	    x = z + sympy.atan2(-mat[1, 0], -mat[2, 0])
-	else:
-	    y = -sympy.pi / 2.0
-	    x = -z + sympy.atan2(mat[1, 0], mat[2, 0])
+    '''Converts a rotation matrix to 3 euler angles XYZ. Note that for simplicity
+    this ignores the singularities.'''
+    x = sympy.atan2(-mat[1, 2], mat[2, 2])
+    y = sympy.asin(mat[0, 2])
+    z = sympy.atan2(-mat[0, 1], mat[0, 0])
     return [x, y, z]
 
 def world_xf(point, coords, worldToLocal=False):
@@ -118,8 +111,8 @@ class AmplPrinter(sympy.printing.str.StrPrinter):
     def _print_Function(self, expr):	
 	#TODO: HACK: we need to put [] around arguments of time-dependent variables,
 	#but keep () around the arguments of normal functions like cos()
-	#this heuristic is hacky... and will break in obvious cases like cos(6)
-	funcList = ['cos', 'sin']
+	#this heuristic is hacky...
+	funcList = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2']
 	if (len(expr.args) == 1 and not expr.args[0].is_Function) and expr.func.__name__ not in funcList:
 	    #first argument is not a function; this might be a time-dep var
 	    return expr.func.__name__ + "[%s]" % self.stringify(expr.args, ", ")

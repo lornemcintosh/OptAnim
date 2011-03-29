@@ -65,7 +65,7 @@ class RigidBody(object):
 	'''returns the position of endpoint B in body local coordinates'''
 	return [0.0, -self.Diameter[1] / 2.0, 0.0]
 
-    def get_intersection_constraint(self, spherePoint, sphereDiameter):
+    def get_intersection_constraint(self, spherePoint, sphereDiameter=0.0):
 	'''returns a constraint that ensures the given sphere (world coords) will
 	not intersect/penetrate/collide with this body (ellipsoid) on any frame'''
 	#unpack diameters as radii for convienience
