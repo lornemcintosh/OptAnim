@@ -20,10 +20,35 @@ g = sympy.Matrix([[0, -9.81, 0, 0, 0, 0]])
 #this regex pattern will match floats (ex. -234 or 1.1 or .3 or +4.23e-8)
 regex_float = "([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
 
+def quat_mult(q1, q2):
+    '''Multiplies two quaternions'''
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    w = w1*w2 - x1*x2 - y1*y2 - z1*z2
+    x = w1*x2 + x1*w2 + y1*z2 - z1*y2
+    y = w1*y2 + y1*w2 + z1*x2 - x1*z2
+    z = w1*z2 + z1*w2 + x1*y2 - y1*x2
+    return [w, x, y, z]
+
 def quat_norm(quat):
     qw, qx, qy, qz = quat
     len = sympy.sqrt(qw ** 2 + qx ** 2 + qy ** 2 + qz ** 2)
     return [qw / len, qx / len, qy / len, qz / len]
+
+def quat_inv(quat):
+    qw, qx, qy, qz = quat_norm(quat)
+    return [qw, -qx, -qy, -qz]	#conjugate
+
+def axisangle_to_quat(axisangle):
+    '''Converts an axisangle to a quaternion. Axis is assumed to be normalized.'''
+    axisX,axisY,axisZ,angle = axisangle
+
+    t2 = angle / 2.0
+    st2 = sympy.sin(t2)
+    return [sympy.cos(t2),
+            st2 * axisX,
+            st2 * axisY,
+            st2 * axisZ]
 
 def quat_to_axisangle(quat):
     qw, qx, qy, qz = quat
@@ -40,7 +65,15 @@ def quat_to_axisangle(quat):
 	z = qz / s
     return [x, y, z, angle]
 
-def matrix_to_quat(m):
+def euler_to_quat(euler):
+    '''Converts 3 euler angles XYZ to a quaternion (YXZ order)'''
+    rx,ry,rz = euler
+    q_xrot = axisangle_to_quat([1, 0, 0, rx])
+    q_yrot = axisangle_to_quat([0, 1, 0, ry])
+    q_zrot = axisangle_to_quat([0, 0, 1, rz])
+    return quat_mult(q_yrot, quat_mult(q_xrot, q_zrot)) #YXZ order
+
+'''def matrix_to_quat(m):
     #agh! sympy is a mess, so this is using regular math libraries
     w = math.sqrt(max(0, 1 + m[0, 0] + m[1, 1] + m[2, 2])) / 2.0;
     x = math.sqrt(max(0, 1 + m[0, 0] - m[1, 1] - m[2, 2])) / 2.0;
@@ -50,10 +83,10 @@ def matrix_to_quat(m):
     x = math.copysign(x, m[2, 1] - m[1, 2])
     y = math.copysign(y, m[0, 2] - m[2, 0])
     z = math.copysign(z, m[1, 0] - m[0, 1])
-    return [w, x, y, z]
+    return [w, x, y, z]'''
 
 def euler_to_matrix(euler):
-    '''Converts 3 euler angles XYZ to a rotation matrix'''
+    '''Converts 3 euler angles XYZ to a rotation matrix (YXZ order)'''
     rx, ry, rz = euler
     X = sympy.Matrix([
 		     [1,	0,	0],
@@ -70,14 +103,23 @@ def euler_to_matrix(euler):
 		     [sympy.sin(rz),	sympy.cos(rz),	0],
 		     [0,	0,	1]
 		     ])
-    return X * Y * Z
+    #we use YXZ order (y-axis first) so that rotations around the y-axis can be done
+    #by just changing the y euler angle (without needing to multiply matricies)
+    return Y * X * Z
 
 def matrix_to_euler(mat):
-    '''Converts a rotation matrix to 3 euler angles XYZ. Note that for simplicity
-    this ignores the singularities.'''
-    x = sympy.atan2(-mat[1, 2], mat[2, 2])
-    y = sympy.asin(mat[0, 2])
-    z = sympy.atan2(-mat[0, 1], mat[0, 0])
+    '''Converts a rotation matrix (YXZ order) to 3 euler angles XYZ. Note that
+    for simplicity this ignores the singularities.'''
+    #XYZ
+    #x = sympy.atan2(-mat[1, 2], mat[2, 2])
+    #y = sympy.asin(mat[0, 2])
+    #z = sympy.atan2(-mat[0, 1], mat[0, 0])
+
+    #YXZ
+    x = sympy.asin(-mat[1, 2])
+    y = sympy.atan2(mat[0, 2], mat[2, 2])
+    z = sympy.atan2(mat[1, 0], mat[1, 1])
+
     return [x, y, z]
 
 def world_xf(point, coords, worldToLocal=False):

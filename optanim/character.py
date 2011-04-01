@@ -50,37 +50,39 @@ class Character(object):
 	    mList.extend(body.Mass)
 	m = sympy.Matrix(mList).T
 
-	#make the joint force vector jf
-	jfList = []
-	for joint in self.JointList:
-	    jfList.extend(joint.f)
-	jf = sympy.Matrix(jfList).T
+	Jlam = sympy.Matrix([0]*(len(self.BodyList)*dof))
+	if len(self.JointList) > 0:
+	    #make the joint force vector jf
+	    jfList = []
+	    for joint in self.JointList:
+		jfList.extend(joint.f)
+	    jf = sympy.Matrix(jfList).T
 
-	#setup joint constraint forces
-	jcList = []
-	for joint in self.JointList:
-	    jcList.extend(joint.get_state_constraints())
+	    #setup joint constraint forces
+	    jcList = []
+	    for joint in self.JointList:
+		jcList.extend(joint.get_state_constraints())
 
-	jc = sympy.Matrix([x.c for x in jcList])  #take only constraint (not bounds)
+	    jc = sympy.Matrix([x.c for x in jcList])  #take only constraint (not bounds)
 
-	#----------------------------------------------------
-	#TODO: FIXME: this is dumb, but jacobian() doesn't work with functions,
-	# so we take off the (t), and then add it back afterwards
-	for i in q:
-	    jc = jc.subs(i(t), i)
+	    #----------------------------------------------------
+	    #TODO: FIXME: this is dumb, but jacobian() doesn't work with functions,
+	    # so we take off the (t), and then add it back afterwards
+	    for i in q:
+		jc = jc.subs(i(t), i)
 
-	#jacobian
-	J = jc.jacobian(q)
-	Jlam = J.T * jf.T
+	    #jacobian
+	    J = jc.jacobian(q)
+	    Jlam = J.T * jf.T
 
-	#add the (t) back to each time-dependant variable
-	for i in q:
-	    Jlam = Jlam.subs(i, i(tCurr))
-	for i in jf:
-	    #note: we do tNext here so that the forces on frame t
-	    #will explain movement between frame t-1 and frame t
-	    Jlam = Jlam.subs(i, i(tNext))
-	#----------------------------------------------------
+	    #add the (t) back to each time-dependant variable
+	    for i in q:
+		Jlam = Jlam.subs(i, i(tCurr))
+	    for i in jf:
+		#note: we do tNext here so that the forces on frame t
+		#will explain movement between frame t-1 and frame t
+		Jlam = Jlam.subs(i, i(tNext))
+	    #----------------------------------------------------
 
 	constraints = []
 
@@ -96,18 +98,31 @@ class Character(object):
 	    if offset_func_next is not None:
 		pNext = offset_func_next(pNext, offset_dir_next)
 
-	    #calculate velocities
-	    vPrev = [0]*dof; vNext = [0]*dof
+	    #calculate velocities (finite differences)
+	    vPrev = [0]*dof; vNext = [0]*dof; vCentral = [0]*dof
 	    for k,x in enumerate(body.q):
-		vPrev[k] = pCurr[k] - pPrev[k]
-		vNext[k] = pNext[k] - pCurr[k]
-	    
+		vPrev[k] = (pCurr[k] - pPrev[k])/(1*pH)
+		vNext[k] = (pNext[k] - pCurr[k])/(1*pH)
+		vCentral[k] = (pNext[k] - pPrev[k])/(2*pH)
+
+	    #calculate accelerations (finite differences)
+	    aCentral = [0]*dof
 	    for k,x in enumerate(body.q):
-		a = (vNext[k] - vPrev[k])/(pH**2)
-		a = a.evalf()
+		aCentral[k] = (vNext[k] - vPrev[k])/(1*pH)
+
+	    #translations (Newton's second law, f=m*a, a=f/m)
+	    for k,x in enumerate(body.q[:3]):
 		fm = g[k] + (Jlam[b*dof+k] / m[b*dof+k])
-		afm = ConstraintEq(name + '_' + body.Name+ '_' + str(k), a, fm, tRange)
+		afm = ConstraintEq(name + '_' + body.Name+ '_' + str(k), aCentral[k], fm, tRange)
 		constraints.append(afm)
+
+	    #rotations (Euler's equations for rigid body dynamics)
+	    constraints.append(ConstraintEq(name + '_' + body.Name+ '_' + str(3),
+		m[b*dof+3]*aCentral[3]+(m[b*dof+5] - m[b*dof+4])*vCentral[4]*vCentral[5], Jlam[b*dof+3], tRange))
+	    constraints.append(ConstraintEq(name + '_' + body.Name+ '_' + str(4),
+		m[b*dof+4]*aCentral[4]+(m[b*dof+3] - m[b*dof+5])*vCentral[5]*vCentral[3], Jlam[b*dof+4], tRange))
+	    constraints.append(ConstraintEq(name + '_' + body.Name+ '_' + str(5),
+		m[b*dof+5]*aCentral[5]+(m[b*dof+4] - m[b*dof+3])*vCentral[3]*vCentral[4], Jlam[b*dof+5], tRange))
 
 	return constraints
 
@@ -142,10 +157,10 @@ class Character(object):
 	for bodyA in self.BodyList:
 	    for bodyB in self.BodyList:
 		if bodyA is not bodyB:
-		    #endpoint A
 		    '''
+		    #endpoint A
 		    point = bodyB.ep_a()
-		    point[1] -= 0.05
+		    point[1] -= 0.01    #bring point inside just a little
 		    worldpoint = world_xf(point, [bq(t) for bq in bodyB.q])
 		    eq = bodyA.get_intersection_constraint(worldpoint)
 		    eq.Name += '_'+bodyB.Name+'_epa'
@@ -153,7 +168,7 @@ class Character(object):
 
 		    #endpoint B
 		    point = bodyB.ep_b()
-		    point[1] += 0.05
+		    point[1] += 0.01	#bring point inside just a little
 		    worldpoint = world_xf(point, [bq(t) for bq in bodyB.q])
 		    eq = bodyA.get_intersection_constraint(worldpoint)
 		    eq.Name += '_'+bodyB.Name+'_epb'

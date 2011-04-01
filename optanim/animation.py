@@ -105,7 +105,7 @@ class AnimationSpec(object):
 class Animation(object):
     '''Represents a specific character animation. The character and constraints
     etc. are set in stone. If solved, it also stores the optimization results (the
-    animation data), and can write it to a BVH file'''
+    animation data)'''
 
     def __init__(self, Name, Length, FPS, Character, Constraints, Objectives, ContactTimes):
 	'''Constructor'''
@@ -126,12 +126,6 @@ class Animation(object):
 
     def get_frame_count(self):
 	return int(round(self.Length * self.FPS))
-
-    '''def export_bvh(self):
-	if not self.Solved:
-	    raise BaseException("Animation must be solved before export")
-	bvh = export_bvh(self)
-	return bvh'''
 
     def _write_header(self):
 	ret = ''
@@ -197,11 +191,13 @@ class Animation(object):
 	ret += '\n'
 
 	ret += 'display solve_result;\n'
-	ret += 'display objective;\n'
 
-	#for interest we can output the values of individual objectives in the solution
-	for i, obj in enumerate(self.ObjectiveList):
-	    ret += 'printf "Objective%i: %f * %f = %f\\n",'+str(i)+','+str(obj[1])+','+str(obj[0])+','+str(obj[1])+' * '+str(obj[0])+';\n'
+	if len(self.ObjectiveList) > 0:
+	    ret += 'display objective;\n'
+
+	    #for interest we can output the values of individual objectives in the solution
+	    for i, obj in enumerate(self.ObjectiveList):
+		ret += 'printf "Objective%i: %f * %f = %f\\n",'+str(i)+','+str(obj[1])+','+str(obj[0])+','+str(obj[1])+' * '+str(obj[0])+';\n'
 
 	ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
 	ret += 'exit;\n'
@@ -249,8 +245,9 @@ class Animation(object):
 	#did it solve correctly?
 	self.Solved = (" = solved" in amplresult)
 	if self.Solved:
-	    objectivematch = re.search("(?<=objective = )"+regex_float, amplresult)
-	    self.ObjectiveValue = float(objectivematch.group(0))
+	    if len(self.ObjectiveList) > 0:
+		objectivematch = re.search("(?<=objective = )"+regex_float, amplresult)
+		self.ObjectiveValue = float(objectivematch.group(0))
 
 	    #read the solution variables into a dict
 	    #this assumes AMPL will output them in order of ascending indices
@@ -283,7 +280,7 @@ class Animation(object):
 	animation length and contact timings (if they are not explicitly provided).'''
 
 	optLength = self.Length is None
-	optContacts = self.ContactTimesDict is None
+	optContacts = self.ContactTimesDict is None and len(self.Character.get_joints_contact()) > 0
 
 	if optLength or optContacts:
 	    print("Starting CMA-ES optimization for %s..." % self.Name)

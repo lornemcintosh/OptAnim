@@ -12,7 +12,7 @@ def export_ogre_skeleton_xml(anim):
     bones = ET.SubElement(root, "bones")
     for i, body in enumerate(anim.Character.BodyList):
 	bone = ET.SubElement(bones, "bone")
-	bone.set("id", str(i))
+	bone.set("id", str(body.Id))
 	bone.set("name", str(body.Name))
 
 	position = ET.SubElement(bone, "position")
@@ -75,22 +75,27 @@ def export_ogre_skeleton_xml(anim):
 	    axisangle = [0.0]*4
 	    if i == 0:
 		rootEuler = [anim.SolutionValues[str(body.q[x])][frame] for x in range(3,dof)]
-		rootMat = euler_to_matrix(rootEuler).evalf()
 		#convert to axis angle... by way of a quat :)
-		quat = matrix_to_quat(rootMat)
+		quat = euler_to_quat(rootEuler)
+		quat = map(float, quat)
 		axisangle = quat_to_axisangle(quat)
+		axisangle = map(float, axisangle)
 	    else:
 		childEuler = [anim.SolutionValues[str(body.q[x])][frame] for x in range(3,dof)]
-		childMat = euler_to_matrix(childEuler).evalf()
+		childQuat = euler_to_quat(childEuler)
+		childQuat = map(float, childQuat)
 
 		parentEuler = [anim.SolutionValues[str(body.Parent.q[x])][frame] for x in range(3,dof)]
-		parentMat = euler_to_matrix(parentEuler).evalf()
+		parentQuat = euler_to_quat(parentEuler)
+		parentQuat = map(float, parentQuat)
 
-		mat = (parentMat.inv() * childMat).evalf() #express child relative to parent
+		#express child relative to parent
+		relativeQuat = quat_mult(quat_inv(parentQuat), childQuat)
+		relativeQuat = map(float, relativeQuat)
 
-		#convert to axis angle... by way of a quat :)
-		quat = matrix_to_quat(mat)
-		axisangle = quat_to_axisangle(quat)
+		#convert to axis angle
+		axisangle = quat_to_axisangle(relativeQuat)
+		axisangle = map(float, axisangle)
 
 	    rotate = ET.SubElement(keyframe, "rotate")
 	    rotate.set("angle", "%.8f" % axisangle[3])
@@ -113,7 +118,7 @@ def _get_bvh_hierarchy(character, root, level, rootoffset):
 	ret += '%s{\n' % tab
 	level += 1; tab = '\t' * level;
 	ret += '%sOFFSET\t%f\t%f\t%f\n' % tuple([tab] + rootoffset)
-	ret += '%sCHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n' % tab
+	ret += '%sCHANNELS 6 Xposition Yposition Zposition Yrotation Xrotation Zrotation\n' % tab
     else:
 	#regular case
 	ret += '%sJOINT %s\n' % (tab, root.Name)
@@ -121,7 +126,7 @@ def _get_bvh_hierarchy(character, root, level, rootoffset):
 	level += 1; tab = '\t' * level;
 	offset = [ root.ParentJoint.PointA[i] - root.Parent.ep_a()[i] for i in range(len(root.Parent.ep_a()))]
 	ret += '%sOFFSET\t%f\t%f\t%f\n' % tuple([tab] + offset)
-	ret += '%sCHANNELS 3 Xrotation Yrotation Zrotation\n' % tab
+	ret += '%sCHANNELS 3 Yrotation Xrotation Zrotation\n' % tab
     if len(root.ChildList) > 0:
 	for child in root.ChildList:
 	    ret += _get_bvh_hierarchy(character, child, level, rootoffset)
@@ -146,13 +151,13 @@ def _get_bvh_motion(character, body, level, frame, data):
 	ret += '{: .8f} {: .8f} {: .8f} '.format(*pos)
 
 	rot = [float(q[x] * (180.0 / math.pi)) for x in range(3,dof)] #convert to degrees
+	rot[0], rot[1] = rot[1], rot[0]	#swap x and y (so we output YXZ)
 	ret += '{: .8f} {: .8f} {: .8f} '.format(*rot)
 
     #regular case
     else:
-	#there *might* be a nicer way to handle relative rotations using just euler angles
-	#but matricies are easy! so this will convert them to matricies, express
-	#the child relative to the parent, and convert back to euler angles again
+	#this will convert the rotations of the child and parent to matricies, express
+	#the child relative to the parent, and convert them back to euler angles again
 	childEuler = [data[str(body.q[x])][frame] for x in range(3,dof)]
 	childMat = euler_to_matrix(childEuler).evalf()
 
@@ -162,6 +167,7 @@ def _get_bvh_motion(character, body, level, frame, data):
 	m = (parentMat.inv() * childMat).evalf() #express child relative to parent
 	r = matrix_to_euler(m)
 	r = [float(x * (180.0 / math.pi)) for x in r]	#convert to degrees
+	r[0], r[1] = r[1], r[0]	#swap x and y (so we output YXZ)
 	ret += '{: .8f} {: .8f} {: .8f} '.format(*r)
 
     level += 1;
@@ -205,12 +211,12 @@ def export_bvh_flat(anim):
     ret += 'ROOT origin\n'
     ret += '{\n'
     ret += '\tOFFSET\t%f\t%f\t%f\n' % (0, 0, 0)
-    ret += '\tCHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n'
+    ret += '\tCHANNELS 6 Xposition Yposition Zposition Yrotation Xrotation Zrotation\n'
     for body in anim.Character.BodyList:
 	ret += '\tJOINT %s\n' % body.Name
 	ret += '\t{\n'
 	ret += '\t\tOFFSET\t%f\t%f\t%f\n' % (0, body.Diameter[1], 0)
-	ret += '\t\tCHANNELS 6 Xposition Yposition Zposition Xrotation Yrotation Zrotation\n'
+	ret += '\t\tCHANNELS 6 Xposition Yposition Zposition Yrotation Xrotation Zrotation\n'
 	ret += '\t\tEnd Site\n'
 	ret += '\t\t{\n'
 	ret += '\t\t\tOFFSET\t%f\t%f\t%f\n' % (0, -body.Diameter[1], 0)
@@ -232,7 +238,7 @@ def export_bvh_flat(anim):
 	    qry = anim.SolutionValues[str(body.q[4])][frame] * (180.0 / math.pi)
 	    qrz = anim.SolutionValues[str(body.q[5])][frame] * (180.0 / math.pi)
 	    ret += ''.join(('%f ' % x) for x in [qtx, qty, qtz])
-	    ret += ''.join(('%f ' % x) for x in [qrx, qry, qrz])
+	    ret += ''.join(('%f ' % x) for x in [qry, qrx, qrz])    #YXZ
 	ret += '\n'
     ret += '\n'
 

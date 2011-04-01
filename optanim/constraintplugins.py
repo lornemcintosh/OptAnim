@@ -33,11 +33,17 @@ class ConstraintPluginLoop(ConstraintPlugin):
 	    rotCenterWorld = sympy.Matrix([0,0,0]) #rotation (pivot) point; just the origin for now
 	    rotmat = euler_to_matrix([dir*k*self.animation.Length for k in self.angVel])
 	    q[:3] = (rotmat * (sympy.Matrix(q[:3]) - rotCenterWorld)) + rotCenterWorld
-
-	    #also the bodies themselves rotate
-	    currRotMat = euler_to_matrix(q[3:])
-	    newRotMat = (rotmat*currRotMat)
-	    q[3:] = matrix_to_euler(newRotMat)
+	    
+	    #also the bodies themselves rotate:
+	    if self.angVel[0] is 0 and self.angVel[2] is 0:
+		#special performance tweak for rotation only around y-axis:
+		#this works because our rotation order is YXZ (y first)
+		q[4] = q[4]+(dir*self.angVel[1]*self.animation.Length)
+	    else:
+		#generic method, always works
+		currRotMat = euler_to_matrix(q[3:])
+		newRotMat = (rotmat*currRotMat)
+		q[3:] = matrix_to_euler(newRotMat)
 
 	#finally we add a simple offset to body positions and rotations
 	q = [x+(dir*self.offset[k]*self.animation.Length) for k,x in enumerate(q)]
@@ -65,11 +71,11 @@ class ConstraintPluginLoop(ConstraintPlugin):
 	    worldpoint_Begin = list(world_xf(j.Point, begin))
 	    worldpoint_End = list(world_xf(j.Point, end))
 
-	    #loop the contact joint 'zero velocity' constraints
+	    #loop the contact joint 'zero velocity' constraints (see joints.py)
 	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_Begin[0], worldpoint_End[0], TimeRange=tRangeOn + ' && t=pTimeBegin'))
 	    retList.append(ConstraintEq(j.Name + '_state_z_loop', worldpoint_Begin[2], worldpoint_End[2], TimeRange=tRangeOn + ' && t=pTimeBegin'))
 
-	    #loop the contact joint 'zero angular velocity' constraint
+	    #loop the contact joint 'zero angular velocity' constraint (see joints.py)
 	    retList.append(ConstraintEq(j.Name + '_state_ry_loop', begin[4], end[4], TimeRange=tRangeOn + ' && t=pTimeBegin'))
 
 	return retList

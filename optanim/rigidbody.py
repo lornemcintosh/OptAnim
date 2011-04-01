@@ -6,17 +6,16 @@ from utils import *
 class RigidBody(object):
     '''Represents a rigid body.'''
 
-    def __init__(self, Name, Mass, Diameter):
+    def __init__(self, Id, Name, Mass, Diameter):
 	'''Constructor'''
-	
-	#unpack diameters as radii for convienience
-	a,b,c = [x/2.0 for x in Diameter]
 
+	self.Id = Id	    #just used for exporting to ogre format currently
 	self.Name = Name
 
 	#mass vector (diagonals of a mass matrix) for a solid ellipsoid
-	self.Mass = [Mass, Mass, Mass,	#translational
-	    (Mass / 5.0) * (b**2+c**2),	#rotational
+	a,b,c = [x/2.0 for x in Diameter] #unpack as radii
+	self.Mass = [Mass, Mass, Mass,	#translational mass
+	    (Mass / 5.0) * (b**2+c**2),	#rotational mass moments of inertia
 	    (Mass / 5.0) * (a**2+c**2),
 	    (Mass / 5.0) * (a**2+b**2)]
 

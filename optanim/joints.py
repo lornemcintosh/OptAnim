@@ -98,12 +98,15 @@ class JointContact(Joint):
 	retList = []
 	tRangeOn = 't in sTimeSteps_' + self.Name + 'On'
 
+	#'zero velocity' constraints
 	worldpoint_t0 = world_xf(self.Point, [bq(t) for bq in self.Body.q])
 	worldpoint_t1 = world_xf(self.Point, [bq(t-1) for bq in self.Body.q])
 	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], TimeRange=tRangeOn + ' && t>pTimeBegin'))
 	retList.append(ConstraintEq(self.Name + '_state_y', worldpoint_t0[1], TimeRange=tRangeOn))
 	retList.append(ConstraintEq(self.Name + '_state_z', worldpoint_t0[2], worldpoint_t1[2], TimeRange=tRangeOn + ' && t>pTimeBegin'))
 
+	#'zero angular velocity' constraint
+	#NB: this only works because our rotation order is YXZ (y-first)
 	retList.append(ConstraintEq(self.Name + '_state_ry', self.Body.q[4](t), self.Body.q[4](t-1), TimeRange=tRangeOn + ' && t>pTimeBegin'))
 	return retList
 
