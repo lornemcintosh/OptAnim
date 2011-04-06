@@ -79,6 +79,16 @@ def main():
     calf_right = RigidBody(4, "R_leg_lower", 3.13, [0.11, 0.43, 0.11])
     char_mortimer.add_body(calf_right)
 
+    R_arm_upper = RigidBody(5, "R_arm_upper", 2.5, [0.076, 0.36, 0.076])
+    char_mortimer.add_body(R_arm_upper)
+    L_arm_upper = RigidBody(6, "L_arm_upper", 2.5, [0.076, 0.36, 0.076])
+    char_mortimer.add_body(L_arm_upper)
+
+    R_arm_lower = RigidBody(7, "R_arm_lower", 1.98, [0.07, 0.36, 0.07])
+    char_mortimer.add_body(R_arm_lower)
+    L_arm_lower = RigidBody(8, "L_arm_lower", 1.98, [0.07, 0.36, 0.07])
+    char_mortimer.add_body(L_arm_lower)
+
     #define some joints to constrain the bodies together
     joint_hip_left = JointRevolute("L_hip", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.5, 0.7], [-1.5, 0.1]], 300)
     char_mortimer.add_joint(joint_hip_left)
@@ -88,6 +98,16 @@ def main():
     char_mortimer.add_joint(joint_hip_right)
     joint_knee_right = JointRevolute("R_knee", thigh_right, thigh_right.ep_b(), calf_right, calf_right.ep_a(), [[0,0], [0,0], [0, 2.8]], 200)
     char_mortimer.add_joint(joint_knee_right)
+
+    joint_shoulder_right = JointRevolute("R_shoulder", torso, [torso.ep_a()[0], torso.ep_a()[1]-0.05, torso.ep_a()[2]+0.16], R_arm_upper, R_arm_upper.ep_a(), [[-3.2, 0.2], [-1.4, 2.8], [-1.5, 3.1]], 8)
+    char_mortimer.add_joint(joint_shoulder_right)
+    joint_shoulder_left = JointRevolute("L_shoulder", torso, [torso.ep_a()[0], torso.ep_a()[1]-0.05, torso.ep_a()[2]-0.16], L_arm_upper, L_arm_upper.ep_a(), [[-0.2, 3.2], [-2.8, 1.4], [-3.1, 1.5]], 8)
+    char_mortimer.add_joint(joint_shoulder_left)
+
+    joint_elbow_right = JointRevolute("R_elbow", R_arm_upper, R_arm_upper.ep_b(), R_arm_lower, R_arm_lower.ep_a(), [[0,0], [0,0], [0, 2.8]], 5)
+    char_mortimer.add_joint(joint_elbow_right)
+    joint_elbow_left = JointRevolute("L_elbow", L_arm_upper, L_arm_upper.ep_b(), L_arm_lower, L_arm_lower.ep_a(), [[0,0], [0,0], [0, 2.8]], 5)
+    char_mortimer.add_joint(joint_elbow_left)
 
     #define an (unpowered) contact joint for each foot
     #(character may push against ground plane with these points)
@@ -115,15 +135,30 @@ def main():
     anim_idle.add_param_constraint([[None], c_crouched])
 
     anim_idle.add_objective('sum {t in sTimeSteps} (' +
-	ampl(joint_hip_left.f[3](t)**2 +
+	ampl(
+	joint_hip_left.f[3](t)**2 +
 	joint_hip_left.f[4](t)**2 +
 	joint_hip_left.f[5](t)**2 +
+
 	joint_knee_left.f[5](t)**2 +
+
+	joint_elbow_left.f[5](t)**2 +
+
+	joint_shoulder_left.f[3](t)**2 +
+	joint_shoulder_left.f[4](t)**2 +
+	joint_shoulder_left.f[5](t)**2 +
 
 	joint_hip_right.f[3](t)**2 +
 	joint_hip_right.f[4](t)**2 +
 	joint_hip_right.f[5](t)**2 +
-	joint_knee_right.f[5](t)**2) +
+
+	joint_knee_right.f[5](t)**2 +
+
+	joint_elbow_right.f[5](t)**2 +
+
+	joint_shoulder_right.f[3](t)**2 +
+	joint_shoulder_right.f[4](t)**2 +
+	joint_shoulder_right.f[5](t)**2) +
 	')', 0.01)
     anim_idle.add_character(char_mortimer)
     anim_idle.generate('.', 'ipopt')
@@ -204,15 +239,30 @@ def main():
     #minimize torques
     #we divide by time so animations of different lengths can be compared fairly
     anim_locomote.add_objective('sum {t in sTimeSteps} (' +
-	ampl(joint_hip_left.f[3](t)**2 +
+	ampl(
+	joint_hip_left.f[3](t)**2 +
 	joint_hip_left.f[4](t)**2 +
 	joint_hip_left.f[5](t)**2 +
+
 	joint_knee_left.f[5](t)**2 +
+
+	joint_elbow_left.f[5](t)**2 +
+
+	joint_shoulder_left.f[3](t)**2 +
+	joint_shoulder_left.f[4](t)**2 +
+	joint_shoulder_left.f[5](t)**2 +
 
 	joint_hip_right.f[3](t)**2 +
 	joint_hip_right.f[4](t)**2 +
 	joint_hip_right.f[5](t)**2 +
-	joint_knee_right.f[5](t)**2) +
+
+	joint_knee_right.f[5](t)**2 +
+
+	joint_elbow_right.f[5](t)**2 +
+
+	joint_shoulder_right.f[3](t)**2 +
+	joint_shoulder_right.f[4](t)**2 +
+	joint_shoulder_right.f[5](t)**2) +
 	')', 0.01)
 
     #minimize rotation of torso on x and z axes (people tend to walk upright)
