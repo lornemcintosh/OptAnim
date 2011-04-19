@@ -43,7 +43,8 @@ def export_ogre_skeleton_xml(anim):
     animations = ET.SubElement(root, "animations")
     animation = ET.SubElement(animations, "animation")
     animation.set("name", str(anim.Name))
-    animation.set("length", str(anim.get_frame_count() * anim.get_frame_length()))
+    length = (len(anim.SolutionValues.items()[0][1])-1) * anim.get_frame_length()
+    animation.set("length", str(length))
     tracks = ET.SubElement(animation, "tracks")
 
     for i, body in enumerate(anim.Character.BodyList):

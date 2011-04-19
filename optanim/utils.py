@@ -1,7 +1,7 @@
 from __future__ import division
 import os
 import sympy
-import math
+import subprocess
 
 #degrees of freedom
 dof = int(6) #3 translational + 3 rotational
@@ -164,3 +164,9 @@ class AmplPrinter(sympy.printing.str.StrPrinter):
 
 def ampl(expr, ** settings):
     return AmplPrinter(settings).doprint(expr)
+
+def amplsolve(amplcmd):
+    '''Runs ampl with the given command and returns the stdout output'''
+    ampl = subprocess.Popen("ampl", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    amplresult = ampl.communicate(amplcmd)[0] #blocking call
+    return amplresult

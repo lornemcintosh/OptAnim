@@ -2,14 +2,16 @@ from __future__ import division
 import itertools
 import numpy
 import re
-import subprocess
-import time
 import cma
+
+from ThreadPool import *
 from exporters import *
 from constraint import *
 from constraintplugins import *
 from joints import *
 from utils import *
+
+pool = ThreadPool()
 
 class AnimationSpec(object):
     '''Specifies a character animation (or set of parametric animations) to be
@@ -58,6 +60,9 @@ class AnimationSpec(object):
 	produced for every unique combination of objectives from these sets'''
 	self.ParamObjectiveList.append(obj)
 
+    def _solvedcallback(self, result):
+        return
+
     def generate(self, outdir, solver):
 	print "Generating %s..." % self.Name
 
@@ -69,7 +74,7 @@ class AnimationSpec(object):
 	    combinations *= max(len(o), 1)
 	print "There will be %i combinations" % combinations
 
-	#for each combination of character and parameters
+	#make an anim for each combination of characters/parameters/objectives
 	for character in self.CharacterList:
 	    for cindex, ccomb in enumerate(itertools.product(*self.ParamConstraintList)):
 		for oindex, ocomb in enumerate(itertools.product(*self.ParamObjectiveList)):
@@ -77,31 +82,8 @@ class AnimationSpec(object):
 		    animName =  character.Name + "_" + self.Name + "_" + str(cindex) + "_" + str(oindex)
 		    anim = Animation(animName, self.Length, self.FPS, character,
 			self.ConstraintList + list(itertools.chain.from_iterable(ccomb)), self.ObjectiveList + list(ocomb), self.ContactTimesDict);
-		    start_time = float(time.time())
-		    anim.optimize(solver)
-		    elapsed_time = time.time() - start_time
-		    if(anim.Solved):
-			print('Solved! (took %f seconds, Objective = %f)' % (elapsed_time, anim.ObjectiveValue))
+                    anim.optimize(solver)  #non-blocking
 
-			filename = animName + '.bvh'
-			print('Writing: %s,' % filename),
-			file = open(filename, 'w')
-			file.write(export_bvh(anim))
-			file.close()
-
-			filename = animName + '.flat.bvh'
-			print('%s,' % filename),
-			file = open(filename, 'w')
-			file.write(export_bvh_flat(anim))
-			file.close()
-
-			filename = animName + '.skeleton.xml'
-			print('%s' % filename)
-			file = open(filename, 'w')
-			file.write(export_ogre_skeleton_xml(anim))
-			file.close()
-		    else:
-			print('Failed to solve! (took %f seconds)' % elapsed_time)
 class Animation(object):
     '''Represents a specific character animation. The character and constraints
     etc. are set in stone. If solved, it also stores the optimization results (the
@@ -203,44 +185,11 @@ class Animation(object):
 	ret += 'exit;\n'
 	return ret
 
-    def _solve(self, solver, writeAMPL=False):
-	'''This handles the 'inner' (spacetime) optimization. It assumes that
-	length and contact timings are set. Use optimize() instead.'''
-
-	#reset the solution
-	self.Solved = False
-	self.ObjectiveValue = numpy.NaN
-	self.SolutionValues = {}
-
-	amplcmd = ''
-	amplcmd += self._write_header()
-	amplcmd += self.Character.get_model()
-	amplcmd += self._write_constraints()
-	amplcmd += self._write_objective()
-	amplcmd += self._write_footer(solver)
-
-	#for debugging we'll write out the ampl file
-	if writeAMPL:
-	    file = open(self.Name + '.ampl', 'w')
-	    file.write(amplcmd)
-	    file.close()
-
-	amplresult = ''
-	try:
-	    #try to load cached solution
-	    file = open(self.Name + '.amplsol', 'r')
-	    amplresult = file.read();
-	    file.close()
-	except:
-	    #couldn't load cached solution file, we'll have to solve it
-	    #solve it with ampl
-	    ampl = subprocess.Popen("ampl", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-	    amplresult = ampl.communicate(amplcmd)[0] #blocking call
-
-	    #cache solution to a file
-	    file = open(self.Name + '.amplsol', 'w')
-	    file.write(amplresult)
-	    file.close()
+    def _solvedcallback(self, amplresult):
+        #cache solution to a file
+        file = open(self.Name + '.amplsol', 'w')
+        file.write(amplresult)
+        file.close()
 
 	#did it solve correctly?
 	self.Solved = (" = solved" in amplresult)
@@ -263,17 +212,71 @@ class Animation(object):
 	    #if looped, append an extra frame (identical to first frame, but offset)
 	    for c in self.ConstraintList:
 		if isinstance(c, ConstraintPluginLoop):
-		    frame = 0 #copy first frame
-		    for b in self.Character.BodyList:
-			q = [self.SolutionValues[str(x)][frame] for x in b.q]
-			q = c.get_offset(q, 1) #apply offset
-			q = map(float, q)
-			for k,bq in enumerate(b.q):
-			    self.SolutionValues[str(bq)].append(q[k]) #append extra frame
-	#else:
-	    #print(amplresult)
-	return self.ObjectiveValue
+		    for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
+                        for b in self.Character.BodyList:
+                            q = [self.SolutionValues[str(x)][frame] for x in b.q]
+                            q = c.get_offset(q, 1) #apply offset
+                            q = map(float, q)
+                            for k,bq in enumerate(b.q):
+                                self.SolutionValues[str(bq)].append(q[k]) #append extra frame
 
+            print('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
+
+            filename = self.Name + '.bvh'
+            print('Writing: %s,' % filename),
+            file = open(filename, 'w')
+            file.write(export_bvh(self))
+            file.close()
+
+            filename = self.Name + '.flat.bvh'
+            print('%s,' % filename),
+            file = open(filename, 'w')
+            file.write(export_bvh_flat(self))
+            file.close()
+
+            filename = self.Name + '.skeleton.xml'
+            print('%s' % filename)
+            file = open(filename, 'w')
+            file.write(export_ogre_skeleton_xml(self))
+            file.close()
+
+        else:
+            print('%s failed!' % self.Name)
+
+    def _solve(self, solver, writeAMPL=False):
+	'''This handles the 'inner' (spacetime) optimization. It assumes that
+	length and contact timings are set. Use optimize() instead.'''
+
+	#reset the solution
+	self.Solved = False
+	self.ObjectiveValue = numpy.NaN
+	self.SolutionValues = {}
+
+	amplcmd = ''
+	amplcmd += self._write_header()
+	amplcmd += self.Character.get_model()
+	amplcmd += self._write_constraints()
+	amplcmd += self._write_objective()
+	amplcmd += self._write_footer(solver)
+
+	#for debugging we'll write out the ampl file
+	if writeAMPL:
+	    file = open(self.Name + '.ampl', 'w')
+	    file.write(amplcmd)
+	    file.close()
+
+	try:
+	    #try to load cached solution
+	    file = open(self.Name + '.amplsol', 'r')
+	    amplresult = file.read();
+	    file.close()
+            #pretend it solved, and use the callback
+            self._solvedcallback(amplresult)
+
+	except:
+	    #couldn't load cached solution file, we'll have to solve it with ampl
+            #use the thread pool for this
+            pool.add_job(amplsolve, args=[amplcmd], return_callback=self._solvedcallback)
 
     def optimize(self, solver):
 	'''This handles the 'outer' optimization that's necessary to determine
