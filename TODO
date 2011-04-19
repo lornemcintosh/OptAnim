@@ -1,0 +1,6 @@
+OptAnim, Copyright (c) 2011 Lorne McIntosh
+
+- Name animations better. Each parameter should contribute a short string to the final name (ex. Mortimer_locomote_1.4mps_1.0rad_forward.bvh)
+- More realistic modeling of joints/muscles
+- Add system for making transition animations (between frames of regular animations)
+- Fix CMA-ES for contact optimization (or eliminate the need for it by reformulating the spacetime problem)
