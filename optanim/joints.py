@@ -53,9 +53,9 @@ class JointRevolute(Joint):
 	retList.append(ConstraintEq(self.Name + "_ty", worldpointA[1] - worldpointB[1]))
 	retList.append(ConstraintEq(self.Name + "_tz", worldpointA[2] - worldpointB[2]))
 
-	retList.append(Constraint(self.Name + "_rx", self.RotationLimits[0][0], self.BodyA.q[3](t) - self.BodyB.q[3](t), self.RotationLimits[0][1]))
-	retList.append(Constraint(self.Name + "_ry", self.RotationLimits[1][0], self.BodyA.q[4](t) - self.BodyB.q[4](t), self.RotationLimits[1][1]))
-	retList.append(Constraint(self.Name + "_rz", self.RotationLimits[2][0], self.BodyA.q[5](t) - self.BodyB.q[5](t), self.RotationLimits[2][1]))
+        retList.append(Constraint(self.Name + "_rx", self.RotationLimits[0][0], self.BodyA.q[3](t) - self.BodyB.q[3](t), self.RotationLimits[0][1]))
+        retList.append(Constraint(self.Name + "_ry", self.RotationLimits[1][0], self.BodyA.q[4](t) - self.BodyB.q[4](t), self.RotationLimits[1][1]))
+        retList.append(Constraint(self.Name + "_rz", self.RotationLimits[2][0], self.BodyA.q[5](t) - self.BodyB.q[5](t), self.RotationLimits[2][1]))
 	return retList
 
     def get_force_constraints(self):
@@ -63,14 +63,23 @@ class JointRevolute(Joint):
 	retList = []
 	#total torque (on all axes that can move) must be less than the "muscles" limit
 	#on axes that can't move, we leave torque unconstrained
-	expr = 0
-	for i in range(3):
-	    if self.RotationLimits[i][0] != self.RotationLimits[i][1]:
-		expr += self.f[i+3](t)**2
+	expr = self.get_torquesquared_expr()
 	if expr != 0:
 	    retList.append(Constraint(self.Name + "_f", lb=expr, c=self.TorqueLimit ** 2))
 	return retList
 
+    def get_torquesquared_expr(self):
+        '''returns an expression for the total squared "muscle" torque applied at the joint'''
+        expr = 0
+        if self.RotationLimits is None:
+            for i in range(3):
+                expr += self.f[i + 3](t) ** 2
+        else:
+            for i in range(3):
+                #we assume that on axes that can't rotate, no muscle force is required to enforce it
+                if self.RotationLimits[i][0] != self.RotationLimits[i][1]:
+                    expr += self.f[i + 3](t) ** 2
+        return expr
 
 class JointContact(Joint):
     '''Represents a (possibly temporary) contact joint.'''
@@ -88,7 +97,7 @@ class JointContact(Joint):
 	    
 	    sympy.Symbol(Name + "_fry")] #rotational
 
-	print 'new '+str(self)
+	print 'new ' + str(self)
     
     def __str__(self):
 	return 'JointContact "' + self.Name + '": connects ' + str(self.Body.Name) + ' at ' + str(self.Point) + ' to ground plane'
@@ -118,7 +127,7 @@ class JointContact(Joint):
 
 	#friction constraint: "stay within static friction cone"
 	#(fx**2 + fz**2) < (fy+u)**2
-	retList.append(Constraint(self.Name + '_force_friction', c=self.f[0](t)**2 + self.f[2](t)**2, ub=(self.f[1](t) * self.Friction)**2, TimeRange=tRangeOn))
+	retList.append(Constraint(self.Name + '_force_friction', c=self.f[0](t) ** 2 + self.f[2](t) ** 2, ub=(self.f[1](t) * self.Friction) ** 2, TimeRange=tRangeOn))
 
 	#contact force may only push (not pull)
 	retList.append(Constraint(self.Name + '_force_push', lb=0, c=self.f[1](t), TimeRange=tRangeOn))

@@ -7,6 +7,7 @@ import cma
 from ThreadPool import *
 from exporters import *
 from constraint import *
+from objective import *
 from constraintplugins import *
 from joints import *
 from utils import *
@@ -33,6 +34,8 @@ class AnimationSpec(object):
 
 	self.CharacterList = []
 
+        self.AnimationList = []
+
     def set_length(self, length):
 	self.Length = float(length)
 
@@ -52,8 +55,8 @@ class AnimationSpec(object):
 	produced for every unique combination of constraints from these sets'''
 	self.ParamConstraintList.append(c)
 
-    def add_objective(self, obj, weight):
-	self.ObjectiveList.append((obj, weight))
+    def add_objective(self, obj):
+	self.ObjectiveList.append(obj)
 
     def add_param_objective(self, obj):
 	'''Add a set of parameterized objectives -- an animation will be
@@ -63,7 +66,7 @@ class AnimationSpec(object):
     def _solvedcallback(self, result):
         return
 
-    def generate(self, outdir, solver):
+    def generate(self, solver='ipopt'):
 	print "Generating %s..." % self.Name
 
 	#print a helpful message about the number of combinations
@@ -82,7 +85,24 @@ class AnimationSpec(object):
 		    animName =  character.Name + "_" + self.Name + "_" + str(cindex) + "_" + str(oindex)
 		    anim = Animation(animName, self.Length, self.FPS, character,
 			self.ConstraintList + list(itertools.chain.from_iterable(ccomb)), self.ObjectiveList + list(ocomb), self.ContactTimesDict);
+                    self.AnimationList.append(anim)
                     anim.optimize(solver)  #non-blocking
+
+    def wait_for_results(self):
+        '''Polls the animations and returns when they're all solved'''
+        alldone = False
+
+        while(alldone is False):
+            alldone = True
+            for anim in self.AnimationList:
+                if anim.Solved is False:
+                    alldone = False
+                    time.sleep(1)
+                    break
+
+    def export(self, outdir):
+        for anim in self.AnimationList:
+            anim.export(outdir)
 
 class Animation(object):
     '''Represents a specific character animation. The character and constraints
@@ -156,7 +176,11 @@ class Animation(object):
 	if len(self.ObjectiveList) > 0:
 	    ret += 'minimize objective: (\n'
 	    for i, obj in enumerate(self.ObjectiveList):
-		ret += '\t' + str(obj[1]) + ' * (' + str(obj[0]) + ')'
+
+                #regular objective
+                if isinstance(obj, Objective):
+                    ret += str(obj)
+
 		if(i == len(self.ObjectiveList)-1):
 		    ret += ') / (pTimeEnd+1);\n'
 		else:
@@ -178,8 +202,8 @@ class Animation(object):
 	    ret += 'display objective;\n'
 
 	    #for interest we can output the values of individual objectives in the solution
-	    for i, obj in enumerate(self.ObjectiveList):
-		ret += 'printf "Objective%i: %f * %f = %f\\n",'+str(i)+','+str(obj[1])+','+str(obj[0])+','+str(obj[1])+' * '+str(obj[0])+';\n'
+	    #for i, obj in enumerate(self.ObjectiveList):
+		#ret += 'printf "Objective%i: %f * %f = %f\\n",'+str(i)+','+str(obj[1])+','+str(obj[0])+','+str(obj[1])+' * '+str(obj[0])+';\n'
 
 	ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
 	ret += 'exit;\n'
@@ -212,7 +236,8 @@ class Animation(object):
 	    #if looped, append an extra frame (identical to first frame, but offset)
 	    for c in self.ConstraintList:
 		if isinstance(c, ConstraintPluginLoop):
-		    for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
+		    #for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
+                    for frame in range(0,1):   #duplicate first frame
                         for b in self.Character.BodyList:
                             q = [self.SolutionValues[str(x)][frame] for x in b.q]
                             q = c.get_offset(q, 1) #apply offset
@@ -222,26 +247,30 @@ class Animation(object):
 
             print('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
 
-            filename = self.Name + '.bvh'
-            print('Writing: %s,' % filename),
-            file = open(filename, 'w')
-            file.write(export_bvh(self))
-            file.close()
-
-            filename = self.Name + '.flat.bvh'
-            print('%s,' % filename),
-            file = open(filename, 'w')
-            file.write(export_bvh_flat(self))
-            file.close()
-
-            filename = self.Name + '.skeleton.xml'
-            print('%s' % filename)
-            file = open(filename, 'w')
-            file.write(export_ogre_skeleton_xml(self))
-            file.close()
-
         else:
             print('%s failed!' % self.Name)
+
+    def export(self, outdir):
+        if self.Solved is False:
+            raise BaseException('Animation is not solved. Cannot export!')
+
+        filename = self.Name + '.bvh'
+        print('Writing: %s,' % filename),
+        file = open(filename, 'w')
+        file.write(export_bvh(self))
+        file.close()
+
+        filename = self.Name + '.flat.bvh'
+        print('%s,' % filename),
+        file = open(filename, 'w')
+        file.write(export_bvh_flat(self))
+        file.close()
+
+        filename = self.Name + '.skeleton.xml'
+        print('%s' % filename)
+        file = open(filename, 'w')
+        file.write(export_ogre_skeleton_xml(self))
+        file.close()
 
     def _solve(self, solver, writeAMPL=False):
 	'''This handles the 'inner' (spacetime) optimization. It assumes that

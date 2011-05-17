@@ -190,7 +190,7 @@ def export_bvh(anim):
 
     #write motion
     ret += 'MOTION\n'
-    ret += 'Frames: %i\n' % anim.get_frame_count()
+    ret += 'Frames: %i\n' % len(anim.SolutionValues.items()[0][1])
     ret += 'Frame Time: %f\n' % anim.get_frame_length()
     #for frame in range(anim.get_frame_count()):
     for frame in range(len(anim.SolutionValues.items()[0][1])):
@@ -227,7 +227,7 @@ def export_bvh_flat(anim):
 
     #write motion
     ret += 'MOTION\n'
-    ret += 'Frames: %i\n' % anim.get_frame_count()
+    ret += 'Frames: %i\n' % len(anim.SolutionValues.items()[0][1])
     ret += 'Frame Time: %f\n' % anim.get_frame_length()
     #for frame in range(0, anim.get_frame_count()):
     for frame in range(len(anim.SolutionValues.items()[0][1])):
