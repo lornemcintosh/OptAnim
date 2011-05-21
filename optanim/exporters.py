@@ -43,7 +43,7 @@ def export_ogre_skeleton_xml(anim):
     animations = ET.SubElement(root, "animations")
     animation = ET.SubElement(animations, "animation")
     animation.set("name", str(anim.Name))
-    length = (len(anim.SolutionValues.items()[0][1])-1) * anim.get_frame_length()
+    length = (len(anim.AnimationData.items()[0][1])-1) * anim.get_frame_length()
     animation.set("length", str(length))
     tracks = ET.SubElement(animation, "tracks")
 
@@ -52,14 +52,14 @@ def export_ogre_skeleton_xml(anim):
 	track.set("bone", str(body.Name))
 	keyframes = ET.SubElement(track, "keyframes")
 	#for frame in range(anim.get_frame_count()):
-	for frame in range(len(anim.SolutionValues.items()[0][1])):
+	for frame in range(len(anim.AnimationData.items()[0][1])):
 	    keyframe = ET.SubElement(keyframes, "keyframe")
 	    keyframe.set("time", str(frame * anim.get_frame_length()))
 
 	    bonepos = []
 	    if i == 0:
 		#get position of root
-		q = [anim.SolutionValues[str(body.q[x])][frame] for x in range(dof)]
+		q = [anim.AnimationData[str(body.q[x])][frame] for x in range(dof)]
 		bonepos = world_xf(body.ep_a(), q)
 		#in ogre, the root translation seems to be expressed relative to
 		#its "root pose" specified above, so here we subtract it out
@@ -75,18 +75,18 @@ def export_ogre_skeleton_xml(anim):
 
 	    axisangle = [0.0]*4
 	    if i == 0:
-		rootEuler = [anim.SolutionValues[str(body.q[x])][frame] for x in range(3,dof)]
+		rootEuler = [anim.AnimationData[str(body.q[x])][frame] for x in range(3,dof)]
 		#convert to axis angle... by way of a quat :)
 		quat = euler_to_quat(rootEuler)
 		quat = map(float, quat)
 		axisangle = quat_to_axisangle(quat)
 		axisangle = map(float, axisangle)
 	    else:
-		childEuler = [anim.SolutionValues[str(body.q[x])][frame] for x in range(3,dof)]
+		childEuler = [anim.AnimationData[str(body.q[x])][frame] for x in range(3,dof)]
 		childQuat = euler_to_quat(childEuler)
 		childQuat = map(float, childQuat)
 
-		parentEuler = [anim.SolutionValues[str(body.Parent.q[x])][frame] for x in range(3,dof)]
+		parentEuler = [anim.AnimationData[str(body.Parent.q[x])][frame] for x in range(3,dof)]
 		parentQuat = euler_to_quat(parentEuler)
 		parentQuat = map(float, parentQuat)
 
@@ -190,11 +190,11 @@ def export_bvh(anim):
 
     #write motion
     ret += 'MOTION\n'
-    ret += 'Frames: %i\n' % len(anim.SolutionValues.items()[0][1])
+    ret += 'Frames: %i\n' % len(anim.AnimationData.items()[0][1])
     ret += 'Frame Time: %f\n' % anim.get_frame_length()
     #for frame in range(anim.get_frame_count()):
-    for frame in range(len(anim.SolutionValues.items()[0][1])):
-	ret += _get_bvh_motion(anim.Character, root, 0, frame, anim.SolutionValues)
+    for frame in range(len(anim.AnimationData.items()[0][1])):
+	ret += _get_bvh_motion(anim.Character, root, 0, frame, anim.AnimationData)
 	ret += '\n'
     ret += '\n'
 
@@ -227,17 +227,17 @@ def export_bvh_flat(anim):
 
     #write motion
     ret += 'MOTION\n'
-    ret += 'Frames: %i\n' % len(anim.SolutionValues.items()[0][1])
+    ret += 'Frames: %i\n' % len(anim.AnimationData.items()[0][1])
     ret += 'Frame Time: %f\n' % anim.get_frame_length()
     #for frame in range(0, anim.get_frame_count()):
-    for frame in range(len(anim.SolutionValues.items()[0][1])):
+    for frame in range(len(anim.AnimationData.items()[0][1])):
 	ret += '%f %f %f %f %f %f ' % (0, 0, 0, 0, 0, 0) #root doesn't move
 	for body in anim.Character.BodyList:
-	    q = [anim.SolutionValues[str(body.q[x])][frame] for x in range(dof)]
+	    q = [anim.AnimationData[str(body.q[x])][frame] for x in range(dof)]
 	    qtx, qty, qtz = world_xf(body.ep_a(), q)
-	    qrx = anim.SolutionValues[str(body.q[3])][frame] * (180.0 / math.pi)
-	    qry = anim.SolutionValues[str(body.q[4])][frame] * (180.0 / math.pi)
-	    qrz = anim.SolutionValues[str(body.q[5])][frame] * (180.0 / math.pi)
+	    qrx = anim.AnimationData[str(body.q[3])][frame] * (180.0 / math.pi)
+	    qry = anim.AnimationData[str(body.q[4])][frame] * (180.0 / math.pi)
+	    qrz = anim.AnimationData[str(body.q[5])][frame] * (180.0 / math.pi)
 	    ret += ''.join(('%f ' % x) for x in [qtx, qty, qtz])
 	    ret += ''.join(('%f ' % x) for x in [qry, qrx, qrz])    #YXZ
 	ret += '\n'

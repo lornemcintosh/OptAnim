@@ -3,6 +3,7 @@ import itertools
 import numpy
 import re
 import cma
+import copy
 
 from ThreadPool import *
 from exporters import *
@@ -121,13 +122,57 @@ class Animation(object):
 
 	self.Solved = False
 	self.ObjectiveValue = numpy.NaN
-	self.SolutionValues = {}
+	self.AnimationData = {}
+
+    def __str__(self):
+        return self.Name
 
     def get_frame_length(self):
 	return float(1.0 / self.FPS)
 
     def get_frame_count(self):
 	return int(round(self.Length * self.FPS))
+
+    def get_contact_frames(self, joint):
+        try:
+            footsteps = self.ContactTimesDict[joint]
+            contactSet = set()
+            for step in footsteps:
+                startTime, intervalTime = [x * self.Length for x in step] #convert from fraction of length to real seconds
+                #TODO: goofy 'double rounding' here is to avoid small floating-point errors; use decimal package instead?
+                intervalFrames = int(round(round(intervalTime * self.FPS, 1)))
+                startFrame = int(round(round(startTime * self.FPS, 1)))
+                endFrame = startFrame + intervalFrames
+                contactSet = contactSet | set([x % self.get_frame_count() for x in range(startFrame, endFrame)])	#loop
+            return contactSet
+
+        except KeyError:
+            raise BaseException('Character "%s" has a contact joint "%s". You must specify timings for %s.' % (self.Character.Name, joint.Name, joint.Name))
+
+    def get_frame_slice(self, firstFrame, lastFrame):
+        #take a 1 extra frame on each side
+        firstFrame -= 1
+        firstFrame = max(0, firstFrame)
+        lastFrame += 1
+        lastFrame = min(self.get_frame_count(), lastFrame)
+
+        ret = copy.deepcopy(self)
+        for k, v in ret.AnimationData.items():
+            ret.AnimationData[k] = ret.AnimationData[k][firstFrame:lastFrame+1]
+        return ret
+
+    #def get_interpolate(self, time):
+        #'''returns the state at time, where time is 0 to 1'''
+        #frameA = floor(time * len(anim.AnimationData.items()[0][1]))
+        #frameB = ceil(time * len(anim.AnimationData.items()[0][1]))
+        #if frameA == frameB:
+            #return self.AnimationData
+
+    #def blend(self, other, weight):
+        #ret = copy.deepcopy(self)
+        #for k, v in ret.AnimationData.items():
+            #ret.AnimationData[k] =
+        #return ret
 
     def _write_header(self):
 	ret = ''
@@ -138,23 +183,11 @@ class Animation(object):
 
 	#write joint timing sets
 	for j in self.Character.get_joints_contact():
-	    try:
-		footsteps = self.ContactTimesDict[j]
-		contactSet = set()
-		for step in footsteps:
-		    startTime, intervalTime = [x * self.Length for x in step] #convert from fraction of length to real seconds
-		    #TODO: goofy 'double rounding' here is to avoid small floating-point errors; use decimal package instead?
-		    intervalFrames = int(round(round(intervalTime * self.FPS, 1)))
-		    startFrame = int(round(round(startTime * self.FPS, 1)))
-		    endFrame = startFrame + intervalFrames
-		    contactSet = contactSet | set([x % self.get_frame_count() for x in range(startFrame, endFrame)])	#loop
-
-		contactStr = '{' + (', '.join(map(str, contactSet))) + '}'
-		ret += 'set sTimeSteps_%sOn := %s;\n' % (j.Name, contactStr)
-		ret += 'set sTimeSteps_%sOff := sTimeSteps diff sTimeSteps_%sOn;\n' % (j.Name, j.Name)
-		ret += '\n'
-	    except KeyError:
-		raise BaseException('Character "%s" has a temp joint "%s". You must specify timings for %s.' % (self.Character.name, j.Name, j.Name))
+            contactSet = self.get_contact_frames(j)
+	    contactStr = '{' + (', '.join(map(str, contactSet))) + '}'
+            ret += 'set sTimeSteps_%sOn := %s;\n' % (j.Name, contactStr)
+            ret += 'set sTimeSteps_%sOff := sTimeSteps diff sTimeSteps_%sOn;\n' % (j.Name, j.Name)
+            ret += '\n'
 	ret += '\n'
 	return ret
 
@@ -228,10 +261,10 @@ class Animation(object):
 	    pattern = "\d+\s+'(\w+)\[(\d+)]'\s+"+regex_float
 	    matches = re.findall(pattern, amplresult)
 	    for match in matches:
-		if match[0] not in self.SolutionValues:
-		    self.SolutionValues[match[0]] = [float(match[2])]
+		if match[0] not in self.AnimationData:
+		    self.AnimationData[match[0]] = [float(match[2])]
 		else:
-		    self.SolutionValues[match[0]].append(float(match[2]))
+		    self.AnimationData[match[0]].append(float(match[2]))
 
 	    #if looped, append an extra frame (identical to first frame, but offset)
 	    for c in self.ConstraintList:
@@ -239,11 +272,11 @@ class Animation(object):
 		    #for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
                     for frame in range(0,1):   #duplicate first frame
                         for b in self.Character.BodyList:
-                            q = [self.SolutionValues[str(x)][frame] for x in b.q]
+                            q = [self.AnimationData[str(x)][frame] for x in b.q]
                             q = c.get_offset(q, 1) #apply offset
                             q = map(float, q)
                             for k,bq in enumerate(b.q):
-                                self.SolutionValues[str(bq)].append(q[k]) #append extra frame
+                                self.AnimationData[str(bq)].append(q[k]) #append extra frame
 
             print('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
 
@@ -254,21 +287,21 @@ class Animation(object):
         if self.Solved is False:
             raise BaseException('Animation is not solved. Cannot export!')
 
-        filename = self.Name + '.bvh'
+        filename = outdir + "\\" + self.Name + '.bvh'
         print('Writing: %s,' % filename),
-        file = open(filename, 'w')
+        file = openfile(filename, 'w')
         file.write(export_bvh(self))
         file.close()
 
-        filename = self.Name + '.flat.bvh'
+        filename = outdir + "\\" + self.Name + '.flat.bvh'
         print('%s,' % filename),
-        file = open(filename, 'w')
+        file = openfile(filename, 'w')
         file.write(export_bvh_flat(self))
         file.close()
 
-        filename = self.Name + '.skeleton.xml'
+        filename = outdir + "\\" + self.Name + '.skeleton.xml'
         print('%s' % filename)
-        file = open(filename, 'w')
+        file = openfile(filename, 'w')
         file.write(export_ogre_skeleton_xml(self))
         file.close()
 
@@ -279,7 +312,7 @@ class Animation(object):
 	#reset the solution
 	self.Solved = False
 	self.ObjectiveValue = numpy.NaN
-	self.SolutionValues = {}
+	self.AnimationData = {}
 
 	amplcmd = ''
 	amplcmd += self._write_header()

@@ -8,6 +8,8 @@ from optanim.constraintplugins import *
 from optanim.joints import *
 from optanim.rigidbody import *
 
+import operator
+
 def main():
 
     #new character, Mortimer the mannequin
@@ -244,7 +246,70 @@ def main():
     anim_startstop.wait_for_results()
     anim_locomote.wait_for_results()
 
-    #export the animations
+    #experiment to see if we can blend them:
+    #=================================================
+    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_locomote.AnimationList
+    slicedAnimList = [[] for i in range(2**2)]  #TODO: fix this for other characters
+
+    for anim in animList:
+
+        #discard the poor ones
+        if anim.ObjectiveValue > 50:
+            continue
+
+        jointsContact = anim.Character.get_joints_contact()
+        contactFramesSetList = [anim.get_contact_frames(x) for x in jointsContact]
+
+        frameSetList = [set(range(0, anim.get_frame_count()))]
+        for in_set in contactFramesSetList:
+            out_diff = [out_set - in_set for out_set in frameSetList]
+            out_union = [out_set & in_set for out_set in frameSetList]
+            frameSetList = out_diff + out_union
+
+        for i, contactType in enumerate(frameSetList):
+            frameSetList[i] = sorted(contactType)
+            groups = []
+            for k, g in itertools.groupby(enumerate(frameSetList[i]), lambda (i,x):i-x):
+                groups.append(map(operator.itemgetter(1), g))
+            frameSetList[i] = groups
+
+        for i, contactType in enumerate(frameSetList):
+            for j, f in enumerate(contactType):
+                newanim = anim.get_frame_slice(f[0], f[len(f)-1])
+                newanim.Name = str(i) + "_" + newanim.Name + "_" + str(f[0]) + "to" + str(f[len(f)-1])
+                slicedAnimList[i].append(newanim)
+
+    for i in slicedAnimList:
+        for anim in i:
+            anim.export('.\\blended')
+
+    for i in slicedAnimList:
+        for anim in i:
+            print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
+
+    for i in slicedAnimList:
+        for anim in i:
+            print "\""+anim.Name+"\","
+
+    #now blend them, 2 at a time
+    blendedAnimList = []
+    for i in slicedAnimList:
+        for x in itertools.combinations(i, 2):
+            newanim = x[0].blend(x[1], 0.5)
+            newanim.Name = x[0].Name + "_blend0.5_" + x[1].Name
+            blendedAnimList.append(newanim)
+
+    for i in blendedAnimList:
+        anim.export('.\\blended')
+
+    for i in blendedAnimList:
+        print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
+
+    for i in blendedAnimList:
+        print "\""+anim.Name+"\","
+    #=================================================
+
+    #export the original animations
     anim_idle.export('.')
     anim_startstop.export('.')
     anim_locomote.export('.')
