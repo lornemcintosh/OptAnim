@@ -5,7 +5,7 @@ import re
 import cma
 import copy
 
-from ThreadPool import *
+from threadpool import *
 from exporters import *
 from constraint import *
 from objective import *
