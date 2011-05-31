@@ -11,6 +11,10 @@ from optanim.rigidbody import *
 import operator
 
 def main():
+    #bodies/joints are defined in character space:
+    #x+- is character front, back (ventral, dorsal)
+    #y+- is character up, down (cranial, caudal)
+    #z+- is character right, left (lateral, lateral)
 
     #new character, Mortimer the mannequin
     char_mortimer = Character('Mortimer')
@@ -25,15 +29,35 @@ def main():
     calf_right = RigidBody(4, "R_leg_lower", 3.13, [0.11, 0.43, 0.11])
     char_mortimer.add_body(calf_right)
 
+    '''R_arm_upper = RigidBody(5, "R_arm_upper", 2.5, [0.076, 0.36, 0.076])
+    char_mortimer.add_body(R_arm_upper)
+    L_arm_upper = RigidBody(6, "L_arm_upper", 2.5, [0.076, 0.36, 0.076])
+    char_mortimer.add_body(L_arm_upper)
+    R_arm_lower = RigidBody(7, "R_arm_lower", 1.98, [0.07, 0.36, 0.07])
+    char_mortimer.add_body(R_arm_lower)
+    L_arm_lower = RigidBody(8, "L_arm_lower", 1.98, [0.07, 0.36, 0.07])
+    char_mortimer.add_body(L_arm_lower)'''
+
+
     #define some joints to constrain the bodies together
-    joint_hip_left = JointRevolute("L_hip", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.5, 0.7], [-1.5, 0.1]], 300)
+    joint_hip_left = JointRevolute("L_hip", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.5, 0.7], [-1.5, 0.1]], 280)
     char_mortimer.add_joint(joint_hip_left)
-    joint_knee_left = JointRevolute("L_knee", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.8]], 200)
+    joint_knee_left = JointRevolute("L_knee", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.8]], 180)
     char_mortimer.add_joint(joint_knee_left)
-    joint_hip_right = JointRevolute("R_hip", torso, [0.0, torso.ep_b()[1], 0.1], thigh_right, thigh_right.ep_a(), [[-0.4, 0.8], [-0.7, 0.5], [-1.5, 0.1]], 300)
+    joint_hip_right = JointRevolute("R_hip", torso, [0.0, torso.ep_b()[1], 0.1], thigh_right, thigh_right.ep_a(), [[-0.4, 0.8], [-0.7, 0.5], [-1.5, 0.1]], 280)
     char_mortimer.add_joint(joint_hip_right)
-    joint_knee_right = JointRevolute("R_knee", thigh_right, thigh_right.ep_b(), calf_right, calf_right.ep_a(), [[0,0], [0,0], [0, 2.8]], 200)
+    joint_knee_right = JointRevolute("R_knee", thigh_right, thigh_right.ep_b(), calf_right, calf_right.ep_a(), [[0,0], [0,0], [0, 2.8]], 180)
     char_mortimer.add_joint(joint_knee_right)
+
+    '''joint_shoulder_right = JointRevolute("R_shoulder", torso, [torso.ep_a()[0], torso.ep_a()[1]-0.05, torso.ep_a()[2]+0.16], R_arm_upper, R_arm_upper.ep_a(), [[-3.2, 0.2], [-1.4, 2.8], [-1.5, 3.1]], 8)
+    char_mortimer.add_joint(joint_shoulder_right)
+    joint_shoulder_left = JointRevolute("L_shoulder", torso, [torso.ep_a()[0], torso.ep_a()[1]-0.05, torso.ep_a()[2]-0.16], L_arm_upper, L_arm_upper.ep_a(), [[-0.2, 3.2], [-2.8, 1.4], [-3.1, 1.5]], 8)
+    char_mortimer.add_joint(joint_shoulder_left)
+    joint_elbow_right = JointRevolute("R_elbow", R_arm_upper, R_arm_upper.ep_b(), R_arm_lower, R_arm_lower.ep_a(), [[0,0], [0,0], [0, 2.8]], 5)
+    char_mortimer.add_joint(joint_elbow_right)
+    joint_elbow_left = JointRevolute("L_elbow", L_arm_upper, L_arm_upper.ep_b(), L_arm_lower, L_arm_lower.ep_a(), [[0,0], [0,0], [0, 2.8]], 5)
+    char_mortimer.add_joint(joint_elbow_left)'''
+    
 
     #define an (unpowered) contact joint for each foot
     #(character may push against ground plane with these points)
@@ -134,11 +158,10 @@ def main():
 
     anim_startstop.add_param_constraint([c_walk])
 
-     #stay above ground plane
+    #stay above ground plane
     anim_startstop.add_constraint(ConstraintPluginGroundPlane())
 
     #minimize torques
-    #we divide by time so animations of different lengths can be compared fairly
     anim_startstop.add_objective(Objective("energy",
         joint_hip_left.get_torquesquared_expr() +
         joint_knee_left.get_torquesquared_expr() +
@@ -148,72 +171,81 @@ def main():
 
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_startstop.add_objective(Objective("upright",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 100.0))
+	torso.q[3](t)**2 + torso.q[5](t)**2, 200.0))
+
+    anim_startstop.add_objective(Objective("faceforwards",
+	(thigh_left.q[4](t) - torso.q[4](t))**2 + (thigh_right.q[4](t) - torso.q[4](t))**2, 200.0))
 
     #minimize acceleration of the torso rotation (so brain is not jostled, and eyes can see etc.)
-    torsoPrev = [bq(t-1) for bq in torso.q[3:]]
+    '''torsoPrev = [bq(t-1) for bq in torso.q[3:]]
     torsoCurr = [bq(t) for bq in torso.q[3:]]
     torsoNext = [bq(t+1) for bq in torso.q[3:]]
     for i in range(3):
 	vPrev = torsoCurr[i] - torsoPrev[i]
 	vNext = torsoNext[i] - torsoCurr[i]
 	accel = vNext - vPrev
-	#anim_locomote.add_objective('sum {t in sTimeSteps: t>pTimeBegin && t<pTimeEnd} ('+ampl((accel)**2)+')', 1000.0)
-        anim_startstop.add_objective(Objective("smooth",accel**2, 1000.0, 't>pTimeBegin && t<pTimeEnd'))
+	#anim_walk.add_objective('sum {t in sTimeSteps: t>pTimeBegin && t<pTimeEnd} ('+ampl((accel)**2)+')', 1000.0)
+        anim_startstop.add_objective(Objective("smooth",accel**2, 1000.0, 't>pTimeBegin && t<pTimeEnd'))'''
 
     anim_startstop.add_character(char_mortimer)
     anim_startstop.generate()
 
 
     #===========================================================================
-    # Locomotion Animations
+    # Walk Animations
     #===========================================================================
-    anim_locomote = AnimationSpec(Name='locomote', FPS=25)
+    anim_walk = AnimationSpec(Name='walk', FPS=25)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
-    anim_locomote.set_length(1.0)
-    anim_locomote.set_contact_times({
-    	joint_foot_left:[(0.37056432, 0.46671992)],	#contact starting at x, lasting for y
-    	joint_foot_right:[(0.83310183, 0.52637255)]	#contact starting at x, lasting for y
+    speed = 1.35 #m/s
+    time_contact = guess_contact_time(0.85, speed)
+    period = 1.0 #s
+    
+    anim_walk.set_length(period)
+    anim_walk.set_contact_times({
+    	joint_foot_left:[(0.5, time_contact/period)],	#contact starting at x%, lasting for y%
+    	joint_foot_right:[(0.0, time_contact/period)]	#contact starting at x%, lasting for y%
     })
-
-    walkSpeed = 1.25
 
     #straight
     c_straight = [
-        [ConstraintPluginLoop([walkSpeed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
+        #[ConstraintPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
+	#Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
 
-        [ConstraintPluginLoop([walkSpeed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	Constraint("faceforwards", lb=-0.35, c=torso.q[4](t), ub=0.35),
+        [ConstraintPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
+	#Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
+        ConstraintEq("torso_ry", torso.q[4](t), 0),
 	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]
         ]
 
     #turning
-    turnRadii = [x*x for x in numpy.arange(0.2, 2.2, 0.2)]
+    turnRadii = [x*x for x in numpy.arange(0.2, 2.6, 0.2)]
+    #print zip(turnRadii,[min(speed/r, 2.25) for r in turnRadii])
     c_turn = [[
-	ConstraintPluginLoop([0, 0, 0, 0, 0, 0], [0, (walkSpeed+0.6)/(r*r + 1.0) + 0.3, 0]),
+	ConstraintPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.25), 0]),
 	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
-	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0')] for r in turnRadii]
+	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
+        ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.25)*(t/anim_walk.FPS))] for r in turnRadii]
 
-    anim_locomote.add_param_constraint(c_straight + c_turn)
+    anim_walk.add_param_constraint(c_straight + c_turn)
 
     #facing direction:
-    anim_locomote.add_constraint(ConstraintEq("startTorso_ry", torso.q[4](t), 0, TimeRange='t = 0'))
+    #anim_walk.add_constraint(ConstraintEq("startTorso_ry", torso.q[4](t), 0, TimeRange='t = 0'))
+
     '''#facing direction: forwards, inwards (left), backwards, outwards (right)
     faceDir = [
 	[ConstraintEq("startTorso_ry", torso.q[4](t), (math.pi/2)*0, TimeRange='t = 0')],
         [ConstraintEq("startTorso_ry", torso.q[4](t), (math.pi/2)*1, TimeRange='t = 0')],
         [ConstraintEq("startTorso_ry", torso.q[4](t), (math.pi/2)*2, TimeRange='t = 0')],
 	[ConstraintEq("startTorso_ry", torso.q[4](t), (math.pi/2)*3, TimeRange='t = 0')]]
-    anim_locomote.add_param_constraint(faceDir)'''
+    anim_walk.add_param_constraint(faceDir)'''
 
     #stay above ground plane
-    anim_locomote.add_constraint(ConstraintPluginGroundPlane())
+    anim_walk.add_constraint(ConstraintPluginGroundPlane())
 
     #minimize torques
-    anim_locomote.add_objective(Objective("energy",
+    anim_walk.add_objective(Objective("energy",
         joint_hip_left.get_torquesquared_expr() +
         joint_knee_left.get_torquesquared_expr() +
         joint_hip_right.get_torquesquared_expr() +
@@ -221,11 +253,14 @@ def main():
         0.01))
 
     #minimize rotation of torso on x and z axes (people tend to walk upright)
-    anim_locomote.add_objective(Objective("upright",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 100.0))
+    anim_walk.add_objective(Objective("upright",
+	torso.q[3](t)**2 + torso.q[5](t)**2, 200.0))
 
-    #faceObjs = [('sum {t in sTimeSteps} ('+ampl((torso.q[4](t) - x)**2)+')', 400.0) for x in [i*math.pi/4 for i in range(0,5)]]
-    #anim_locomote.add_param_objective(faceObjs)
+    anim_walk.add_objective(Objective("thighPreferenceX",
+	(thigh_left.q[3](t) - torso.q[3](t))**2 + (thigh_right.q[3](t) - torso.q[3](t))**2, 300.0))
+    anim_walk.add_objective(Objective("thighPreferenceY",
+	(thigh_left.q[4](t) - torso.q[4](t))**2 + (thigh_right.q[4](t) - torso.q[4](t))**2, 300.0))
+
 
     #minimize acceleration of the torso rotation (so brain is not jostled, and eyes can see etc.)
     torsoPrev = [bq(t-1) for bq in torso.q[3:]]
@@ -235,20 +270,115 @@ def main():
 	vPrev = torsoCurr[i] - torsoPrev[i]
 	vNext = torsoNext[i] - torsoCurr[i]
 	accel = vNext - vPrev
-	#anim_locomote.add_objective('sum {t in sTimeSteps: t>pTimeBegin && t<pTimeEnd} ('+ampl((accel)**2)+')', 1000.0)
-        anim_locomote.add_objective(Objective("smooth",accel**2, 1000.0, 't>pTimeBegin && t<pTimeEnd'))
+        anim_walk.add_objective(Objective("smooth",accel**2, 3000.0, 't>pTimeBegin && t<pTimeEnd'))
 
-    anim_locomote.add_character(char_mortimer)
-    anim_locomote.generate()
+    anim_walk.add_character(char_mortimer)
+    anim_walk.generate()
+
+
+    #===========================================================================
+    # Run Animations
+    #===========================================================================
+    anim_run = AnimationSpec(Name='run', FPS=37)
+
+    #specify anim length and contact joints timings (i.e. footsteps)
+    #contact timings given as a fraction of the total animation length
+    speed = 3.1 #m/s
+    time_contact = guess_contact_time(0.85, speed)
+    period = 0.75 #s
+
+    anim_run.set_length(period)
+    anim_run.set_contact_times({
+    	joint_foot_left:[(0.5, time_contact/period)],	#contact starting at x%, lasting for y%
+    	joint_foot_right:[(0.0, time_contact/period)]	#contact starting at x%, lasting for y%
+    })
+
+    #straight
+    c_straight = [
+        [ConstraintPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
+        #Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
+        ConstraintEq("torso_ry", torso.q[4](t), 0),
+	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]]
+
+    #turning
+    turnRadii = [x*x for x in numpy.arange(2.4, 2.6, 0.2)]
+    #print zip(turnRadii,[min(speed/r, 2.25) for r in turnRadii])
+    c_turn = [[
+	ConstraintPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.25), 0]),
+	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
+	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
+        ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.25)*(t/anim_run.FPS))] for r in turnRadii]
+
+    anim_run.add_param_constraint(c_straight + c_turn)
+
+    #facing direction:
+    #anim_run.add_constraint(ConstraintEq("startTorso_ry", torso.q[4](t), 0, TimeRange='t = 0'))
+
+    #stay above ground plane
+    anim_run.add_constraint(ConstraintPluginGroundPlane())
+
+    #anim_run.add_constraint(Constraint("properformL", lb=0.35, c=calf_left.q[1](t), TimeRange='t >= 2 && t <= 7'))
+    #anim_run.add_constraint(Constraint("properformR", lb=0.35, c=calf_right.q[1](t), TimeRange='t >= 13 && t <= 18'))
+    #anim_run.add_constraint(ConstraintEq("properformL", calf_left.q[5](t), -1.57, TimeRange='t = 5'))
+    #anim_run.add_constraint(ConstraintEq("properformR", calf_right.q[5](t), -1.57, TimeRange='t = 16'))
+
+    #minimize torques
+    anim_run.add_objective(Objective("energy",
+        joint_hip_left.get_torquesquared_expr() +
+        joint_knee_left.get_torquesquared_expr() +
+        joint_hip_right.get_torquesquared_expr() +
+        joint_knee_right.get_torquesquared_expr(),
+        0.01))
+
+    #minimize rotation of torso on x and z axes (people tend to walk upright)
+    anim_run.add_objective(Objective("torsoupright",
+	#torso.q[3](t)**2 + torso.q[5](t)**2, 200.0))
+        torso.q[5](t)**2, 200.0))
+
+    anim_run.add_objective(Objective("faceforwards",
+	(thigh_left.q[4](t) - torso.q[4](t))**2 + (thigh_right.q[4](t) - torso.q[4](t))**2, 300.0))
+
+    #minimize acceleration of the torso rotation (so brain is not jostled, and eyes can see etc.)
+    torsoPrev = [bq(t-1) for bq in torso.q[3:]]
+    torsoCurr = [bq(t) for bq in torso.q[3:]]
+    torsoNext = [bq(t+1) for bq in torso.q[3:]]
+    for i in range(3):
+	vPrev = torsoCurr[i] - torsoPrev[i]
+	vNext = torsoNext[i] - torsoCurr[i]
+	accel = vNext - vPrev
+        anim_run.add_objective(Objective("smooth",accel**2, 3000.0, 't>pTimeBegin && t<pTimeEnd'))
+
+    anim_run.add_character(char_mortimer)
+    anim_run.generate()
+
     
     #wait for them all to solve
     anim_idle.wait_for_results()
     anim_startstop.wait_for_results()
-    anim_locomote.wait_for_results()
+    anim_walk.wait_for_results()
+    anim_run.wait_for_results()
+
+    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
+    finalAnimList = []
+    for anim in animList:
+        #discard the poor ones
+        if anim.Solved and anim.ObjectiveValue < 70:
+            finalAnimList.append(anim)
+
+    for anim in finalAnimList:
+        anim.export('.\\anims')
+
+    for anim in finalAnimList:
+            print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
+
+    for anim in finalAnimList:
+            print "\""+anim.Name+"\","
+
 
     #experiment to see if we can blend them:
     #=================================================
-    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_locomote.AnimationList
+    '''
+    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList
     slicedAnimList = [[] for i in range(2**2)]  #TODO: fix this for other characters
 
     for anim in animList:
@@ -307,12 +437,14 @@ def main():
 
     for i in blendedAnimList:
         print "\""+anim.Name+"\","
+    '''
     #=================================================
 
     #export the original animations
     anim_idle.export('.')
     anim_startstop.export('.')
-    anim_locomote.export('.')
+    anim_walk.export('.')
+    anim_run.export('.')
 
     print("All done!")
     return

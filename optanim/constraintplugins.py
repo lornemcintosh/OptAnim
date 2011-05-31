@@ -16,9 +16,9 @@ class ConstraintPlugin(object):
 class ConstraintPluginLoop(ConstraintPlugin):
     '''A constraint plugin that enforces cyclic (looping) motion'''
 
-    def __init__(self, offset=[0]*dof, angVel=[0]*3):
+    def __init__(self, vel=[0]*dof, angVel=[0]*3):
 	'''Constructor'''
-	self.offset = offset
+	self.vel = vel
 	self.angVel = angVel
 	ConstraintPlugin.__init__(self)
 
@@ -46,7 +46,7 @@ class ConstraintPluginLoop(ConstraintPlugin):
 		q[3:] = matrix_to_euler(newRotMat)
 
 	#finally we add a simple offset to body positions and rotations
-	q = [x+(dir*self.offset[k]*self.animation.Length) for k,x in enumerate(q)]
+	q = [x+(dir*self.vel[k]*self.animation.Length) for k,x in enumerate(q)]
 
 	return q
 

@@ -170,3 +170,10 @@ def amplsolve(amplcmd):
     ampl = subprocess.Popen("ampl", stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     amplresult = ampl.communicate(amplcmd)[0] #blocking call
     return amplresult
+
+def guess_contact_time(leg_length=1.0, speed=1.0):
+    '''Calculates a reasonable contact (stance) time (s) given leg length (m) and movement speed (m/s)'''
+    #formula from paper: TIME OF CONTACT AND STEP LENGTH...
+    #http://jeb.biologists.org/content/203/2/221.full.pdf
+    time_contact = (0.80*leg_length**0.84)/(speed**0.87)
+    return time_contact #in seconds

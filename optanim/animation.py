@@ -4,6 +4,7 @@ import numpy
 import re
 import cma
 import copy
+import time
 
 from threadpool import *
 from exporters import *
@@ -90,20 +91,21 @@ class AnimationSpec(object):
                     anim.optimize(solver)  #non-blocking
 
     def wait_for_results(self):
-        '''Polls the animations and returns when they're all solved'''
+        '''Polls the animations and returns when they're all done'''
         alldone = False
-
         while(alldone is False):
             alldone = True
             for anim in self.AnimationList:
-                if anim.Solved is False:
+                if anim.Done is False:
                     alldone = False
                     time.sleep(1)
                     break
 
     def export(self, outdir):
+        self.wait_for_results()
         for anim in self.AnimationList:
-            anim.export(outdir)
+            if anim.Solved:
+                anim.export(outdir)
 
 class Animation(object):
     '''Represents a specific character animation. The character and constraints
@@ -120,7 +122,8 @@ class Animation(object):
 	self.ObjectiveList = Objectives
 	self.ContactTimesDict = ContactTimes
 
-	self.Solved = False
+	self.Done = False
+        self.Solved = False
 	self.ObjectiveValue = numpy.NaN
 	self.AnimationData = {}
 
@@ -215,7 +218,7 @@ class Animation(object):
                     ret += str(obj)
 
 		if(i == len(self.ObjectiveList)-1):
-		    ret += ') / (pTimeEnd+1);\n'
+		    ret += ') / (pTimeEnd+1);\n' #we divide by time so animations of different lengths can be compared fairly
 		else:
 		    ret += ' +\n'
 	return ret
@@ -225,7 +228,7 @@ class Animation(object):
 	ret = 'option reset_initial_guesses 1;\n'
 	#ret += 'option show_stats 1;\n'
 	ret += 'option solver ' + solver + ';\n'
-	ret += 'option ipopt_options \'max_iter=4000 print_level=0\';\n' #TODO: what about other solvers?
+	ret += 'option ipopt_options \'max_iter=4000 max_cpu_time=600 print_level=0\';\n' #TODO: what about other solvers?
 	ret += 'solve;\n'
 	ret += '\n'
 
@@ -235,14 +238,16 @@ class Animation(object):
 	    ret += 'display objective;\n'
 
 	    #for interest we can output the values of individual objectives in the solution
-	    #for i, obj in enumerate(self.ObjectiveList):
-		#ret += 'printf "Objective%i: %f * %f = %f\\n",'+str(i)+','+str(obj[1])+','+str(obj[0])+','+str(obj[1])+' * '+str(obj[0])+';\n'
+	    for i, obj in enumerate(self.ObjectiveList):
+		ret += obj.write_debug_str()
 
 	ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
 	ret += 'exit;\n'
 	return ret
 
     def _solvedcallback(self, amplresult):
+        self.Done = True
+
         #cache solution to a file
         file = open(self.Name + '.amplsol', 'w')
         file.write(amplresult)
@@ -270,7 +275,7 @@ class Animation(object):
 	    for c in self.ConstraintList:
 		if isinstance(c, ConstraintPluginLoop):
 		    #for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
-                    for frame in range(0,1):   #duplicate first frame
+                    for frame in range(0,2):   #duplicate first 2 frames
                         for b in self.Character.BodyList:
                             q = [self.AnimationData[str(x)][frame] for x in b.q]
                             q = c.get_offset(q, 1) #apply offset
@@ -310,6 +315,7 @@ class Animation(object):
 	length and contact timings are set. Use optimize() instead.'''
 
 	#reset the solution
+        self.Done = False
 	self.Solved = False
 	self.ObjectiveValue = numpy.NaN
 	self.AnimationData = {}
