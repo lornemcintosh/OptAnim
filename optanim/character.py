@@ -2,7 +2,7 @@ from __future__ import division
 import math
 import sympy
 
-from constraint import *
+from specifier import *
 from joints import *
 from utils import *
 
@@ -13,6 +13,7 @@ class Character(object):
 	self.Name = Name
 	self.BodyList = []
 	self.JointList = []
+        self.SpecifierList = []
 
     def add_body(self, body):
 	self.BodyList.append(body)
@@ -26,6 +27,11 @@ class Character(object):
 	    joint.BodyB.set_parent(joint.BodyA)
 	    joint.BodyA.add_child_joint(joint)
 	    joint.BodyB.set_parent_joint(joint)
+
+    def add_specifier(self, specifier):
+        '''Adds a specifier to the character. These specifiers will
+        automatically be added to any animation involving this character'''
+	self.SpecifierList.append(specifier)
 
     def get_joints_contact(self):
 	'''Returns a list of this characters contact joints'''

@@ -1,6 +1,7 @@
 from __future__ import division
 import sympy
-from constraint import *
+
+from specifier import *
 from utils import *
 
 class RigidBody(object):

@@ -1,6 +1,7 @@
 from __future__ import division
 import os
 import sympy
+import math
 import subprocess
 
 #degrees of freedom
@@ -157,7 +158,7 @@ class AmplPrinter(sympy.printing.str.StrPrinter):
 	funcList = ['sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'atan2']
 	if (len(expr.args) == 1 and not expr.args[0].is_Function) and expr.func.__name__ not in funcList:
 	    #first argument is not a function; this might be a time-dep var
-	    return expr.func.__name__ + "[%s]" % self.stringify(expr.args, ", ")
+	    return expr.func.__name__ + "[(%s+card(sTimeSteps)) mod card(sTimeSteps)]" % self.stringify(expr.args, ", ")    #TODO: looping hack (card() gets set length)
 	else:
 	    #first argument is a function; default behaviour
 	    return sympy.printing.str.StrPrinter._print_Function(self, expr)

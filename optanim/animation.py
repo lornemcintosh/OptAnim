@@ -8,9 +8,7 @@ import time
 
 from threadpool import *
 from exporters import *
-from constraint import *
-from objective import *
-from constraintplugins import *
+from specifier import *
 from joints import *
 from utils import *
 
@@ -28,11 +26,8 @@ class AnimationSpec(object):
 	self.FPS = FPS
 	self.ContactTimesDict = None
 
-	self.ConstraintList = []
-	self.ParamConstraintList = []
-
-	self.ObjectiveList = []
-	self.ParamObjectiveList = []
+	self.SpecifierList = []
+	self.ParamSpecifierList = []
 
 	self.CharacterList = []
 
@@ -43,52 +38,48 @@ class AnimationSpec(object):
 
     def set_contact_times(self, dict):
 	self.ContactTimesDict = dict
+
+    def get_frame_length(self):
+	return float(1.0 / self.FPS)
+
+    def get_frame_count(self):
+	return int(round(self.Length * self.FPS))
     
     def add_character(self, character):
 	self.CharacterList.append(character)
 
-    def add_constraint(self, c):
-	'''Add a static constraint -- one that will apply to ALL animations
-	in this animation set'''
-	self.ConstraintList.append(c)
+    def add_specifier(self, spec):
+	'''Add a static specifier -- one that will apply to ALL animations
+	in this AnimationSpec'''
+	self.SpecifierList.append(spec)
 
-    def add_param_constraint(self, c):
-	'''Add a set of parameterized constraints -- an animation will be
-	produced for every unique combination of constraints from these sets'''
-	self.ParamConstraintList.append(c)
-
-    def add_objective(self, obj):
-	self.ObjectiveList.append(obj)
-
-    def add_param_objective(self, obj):
-	'''Add a set of parameterized objectives -- an animation will be
-	produced for every unique combination of objectives from these sets'''
-	self.ParamObjectiveList.append(obj)
-
-    def _solvedcallback(self, result):
-        return
+    def add_param_specifier(self, spec):
+	'''Add a set of parameterized specifiers -- an animation will be
+	produced for every unique combination of specifiers from these sets'''
+	self.ParamSpecifierList.append(spec)
 
     def generate(self, solver='ipopt'):
 	print "Generating %s..." % self.Name
 
-	#print a helpful message about the number of combinations
+	#print a helpful message about the number of combinations generated
 	combinations = len(self.CharacterList)
-	for c in self.ParamConstraintList:
-	    combinations *= max(len(c), 1)
-	for o in self.ParamObjectiveList:
-	    combinations *= max(len(o), 1)
+	for spec in self.ParamSpecifierList:
+	    combinations *= max(len(spec), 1)
 	print "There will be %i combinations" % combinations
 
-	#make an anim for each combination of characters/parameters/objectives
+	#make an anim for each combination of characters/specifiers
 	for character in self.CharacterList:
-	    for cindex, ccomb in enumerate(itertools.product(*self.ParamConstraintList)):
-		for oindex, ocomb in enumerate(itertools.product(*self.ParamObjectiveList)):
-		    #create an animation instance
-		    animName =  character.Name + "_" + self.Name + "_" + str(cindex) + "_" + str(oindex)
-		    anim = Animation(animName, self.Length, self.FPS, character,
-			self.ConstraintList + list(itertools.chain.from_iterable(ccomb)), self.ObjectiveList + list(ocomb), self.ContactTimesDict);
-                    self.AnimationList.append(anim)
-                    anim.optimize(solver)  #non-blocking
+	    for index, comb in enumerate(itertools.product(*self.ParamSpecifierList)):
+                #build out constraint and objective lists
+                paramList = list(itertools.chain.from_iterable(comb))
+                animSpecifierList = character.SpecifierList + self.SpecifierList + paramList
+
+                #create an animation instance
+                animName =  character.Name + "_" + self.Name + "_" + str(index)
+                anim = Animation(animName, self.Length, self.FPS, character,
+                    animSpecifierList, self.ContactTimesDict);
+                self.AnimationList.append(anim)
+                anim.optimize(solver)  #non-blocking
 
     def wait_for_results(self):
         '''Polls the animations and returns when they're all done'''
@@ -112,20 +103,21 @@ class Animation(object):
     etc. are set in stone. If solved, it also stores the optimization results (the
     animation data)'''
 
-    def __init__(self, Name, Length, FPS, Character, Constraints, Objectives, ContactTimes):
+    def __init__(self, Name, Length, FPS, Character, SpecifierList, ContactTimes):
 	'''Constructor'''
 	self.Name = Name
 	self.Length = Length
 	self.FPS = FPS
 	self.Character = Character
-	self.ConstraintList = Constraints
-	self.ObjectiveList = Objectives
+	self.SpecifierList = SpecifierList
 	self.ContactTimesDict = ContactTimes
 
 	self.Done = False
         self.Solved = False
 	self.ObjectiveValue = numpy.NaN
 	self.AnimationData = {}
+        self.CachedConstraintList = []
+        self.CachedObjectiveList = []
 
     def __str__(self):
         return self.Name
@@ -194,30 +186,19 @@ class Animation(object):
 	ret += '\n'
 	return ret
 
-    def _write_constraints(self):
-	ret = ''
-	for eq in self.ConstraintList:
-	    #regular constraints
-	    if isinstance(eq, Constraint):
-		ret += str(eq)
-	    #constraint plugins
-	    if isinstance(eq, ConstraintPlugin):
-		for c in eq.get_constraints(self, self.Character):
-		    ret += str(c)
-	return ret
+    def _write_specifiers(self):
+        ret = ''
 
-    def _write_objective(self):
-	ret = ''
+        #write constraints
+	for eq in self.CachedConstraintList:
+            ret += str(eq)
+
 	#write weighted objectives
-	if len(self.ObjectiveList) > 0:
+	if len(self.CachedObjectiveList) > 0:
 	    ret += 'minimize objective: (\n'
-	    for i, obj in enumerate(self.ObjectiveList):
-
-                #regular objective
-                if isinstance(obj, Objective):
-                    ret += str(obj)
-
-		if(i == len(self.ObjectiveList)-1):
+	    for i, obj in enumerate(self.CachedObjectiveList):
+                ret += str(obj)
+		if(i == len(self.CachedObjectiveList)-1):
 		    ret += ') / (pTimeEnd+1);\n' #we divide by time so animations of different lengths can be compared fairly
 		else:
 		    ret += ' +\n'
@@ -228,17 +209,18 @@ class Animation(object):
 	ret = 'option reset_initial_guesses 1;\n'
 	#ret += 'option show_stats 1;\n'
 	ret += 'option solver ' + solver + ';\n'
-	ret += 'option ipopt_options \'max_iter=4000 max_cpu_time=600 print_level=0\';\n' #TODO: what about other solvers?
+	ret += 'option ipopt_options \'max_iter=10000 print_level=0\';\n' #TODO: what about other solvers? max_cpu_time=1200
+        ret += 'option snopt_options \'meminc=10000000\';\n' #TODO: what about other solvers?
 	ret += 'solve;\n'
 	ret += '\n'
 
 	ret += 'display solve_result;\n'
 
-	if len(self.ObjectiveList) > 0:
+	if len(self.CachedObjectiveList) > 0:
 	    ret += 'display objective;\n'
 
 	    #for interest we can output the values of individual objectives in the solution
-	    for i, obj in enumerate(self.ObjectiveList):
+	    for i, obj in enumerate(self.CachedObjectiveList):
 		ret += obj.write_debug_str()
 
 	ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
@@ -256,7 +238,7 @@ class Animation(object):
 	#did it solve correctly?
 	self.Solved = (" = solved" in amplresult)
 	if self.Solved:
-	    if len(self.ObjectiveList) > 0:
+	    if len(self.CachedObjectiveList) > 0:
 		objectivematch = re.search("(?<=objective = )"+regex_float, amplresult)
 		self.ObjectiveValue = float(objectivematch.group(0))
 
@@ -271,19 +253,21 @@ class Animation(object):
 		else:
 		    self.AnimationData[match[0]].append(float(match[2]))
 
-	    #if looped, append an extra frame (identical to first frame, but offset)
-	    for c in self.ConstraintList:
-		if isinstance(c, ConstraintPluginLoop):
+            #if looped, append an extra frame (identical to first frame, but offset)
+	    for s in self.SpecifierList:
+		if isinstance(s, SpecifierPluginLoop):
 		    #for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
-                    for frame in range(0,2):   #duplicate first 2 frames
+                    for frame in range(0,1):   #duplicate first 1 frame
                         for b in self.Character.BodyList:
                             q = [self.AnimationData[str(x)][frame] for x in b.q]
-                            q = c.get_offset(q, 1) #apply offset
+                            q = s.get_offset(q, 1) #apply offset
                             q = map(float, q)
                             for k,bq in enumerate(b.q):
                                 self.AnimationData[str(bq)].append(q[k]) #append extra frame
 
             print('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
+
+            self.export('.')    #export immediately so we can see the results
 
         else:
             print('%s failed!' % self.Name)
@@ -319,12 +303,29 @@ class Animation(object):
 	self.Solved = False
 	self.ObjectiveValue = numpy.NaN
 	self.AnimationData = {}
+        self.CachedConstraintList = []
+        self.CachedObjectiveList = []
+
+        #split specifiers into constraints and objectives for easier processing
+        for s in self.SpecifierList:
+            #regular constraints/objectives
+            if isinstance(s, Constraint):
+                self.CachedConstraintList.append(s)
+            elif isinstance(s, Objective):
+                self.CachedObjectiveList.append(s)
+
+            #plugins
+            elif isinstance(s, SpecifierPlugin):
+                for c in s.get_specifiers(self, self.Character):
+                    if isinstance(c, Constraint):
+                        self.CachedConstraintList.append(c)
+                    elif isinstance(c, Objective):
+                        self.CachedObjectiveList.append(c)
 
 	amplcmd = ''
 	amplcmd += self._write_header()
-	amplcmd += self.Character.get_model()
-	amplcmd += self._write_constraints()
-	amplcmd += self._write_objective()
+	amplcmd += self.Character.get_model()   #character body & physical eq.
+	amplcmd += self._write_specifiers()     #other constraints & objectives
 	amplcmd += self._write_footer(solver)
 
 	#for debugging we'll write out the ampl file

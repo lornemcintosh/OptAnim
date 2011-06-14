@@ -1,6 +1,6 @@
 from __future__ import division
 
-from constraint import *
+from specifier import *
 from utils import *
 
 class Joint(object):
@@ -22,8 +22,8 @@ class JointRevolute(Joint):
     def __init__(self, Name, BodyA, PointA, BodyB, PointB, RotationLimits, TorqueLimit):
 	'''Constructor'''
 	Joint.__init__(self, Name)
-	self.BodyA = BodyA
-	self.BodyB = BodyB
+	self.BodyA = BodyA  #toward root
+	self.BodyB = BodyB  #away from root toward a leaf
 	self.PointA = PointA
 	self.PointB = PointB
 	self.RotationLimits = RotationLimits
@@ -63,22 +63,59 @@ class JointRevolute(Joint):
 	retList = []
 	#total torque (on all axes that can move) must be less than the "muscles" limit
 	#on axes that can't move, we leave torque unconstrained
-	expr = self.get_torquesquared_expr()
+	expr = self.get_sumsqr_torque_expr(t)
 	if expr != 0:
 	    retList.append(Constraint(self.Name + "_f", lb=expr, c=self.TorqueLimit ** 2))
 	return retList
 
-    def get_torquesquared_expr(self):
-        '''returns an expression for the total squared "muscle" torque applied at the joint'''
+    def get_angle_expr(self, time):
+        '''Returns a list of expressions for the joint angle on each euler axis at the given time'''
+        retList = []
+        for i in range(3):
+            retList.append(self.BodyA.q[i + 3](time) - self.BodyB.q[i + 3](time))
+        return retList
+
+    def get_angle_velocity_expr(self, time):
+        '''Returns a list of expressions for the joint angular velocity on each euler axis at the given time'''
+        retList = []
+        for i in range(3):
+            retList.append((self.get_angle_expr(time+1)[i] - self.get_angle_expr(time-1)[i])/(2*pH))
+        return retList
+
+    def get_sumsqr_angle_velocity_expr(self, time):
+        '''Returns an expression for the sum of the squared joint angular velocities on each euler axis at the given time'''
+        expr = 0
+        vel = self.get_angle_velocity_expr(time)
+        for i in range(3):
+            expr += vel[i]**2
+        return expr
+
+    def get_angle_acceleration_expr(self, time):
+        '''Returns a list of expressions for the joint angular acceleration on each euler axis at the given time'''
+        retList = []
+        for i in range(3):
+            retList.append((self.get_angle_expr(time+1)[i] - 2*self.get_angle_expr(time)[i] + self.get_angle_expr(time-1)[i])/(pH*pH))
+        return retList
+
+    def get_sumsqr_angle_acceleration_expr(self, time):
+        '''Returns an expression for the sum of the squared joint angular accelerations on each euler axis at the given time'''
+        expr = 0
+        accel = self.get_angle_acceleration_expr(time)
+        for i in range(3):
+            expr += accel[i]**2
+        return expr
+
+    def get_sumsqr_torque_expr(self, time):
+        '''Returns an expression for the sum of the squared "muscle" torque applied at the joint'''
         expr = 0
         if self.RotationLimits is None:
             for i in range(3):
-                expr += self.f[i + 3](t) ** 2
+                expr += self.f[i + 3](time) ** 2
         else:
             for i in range(3):
                 #we assume that on axes that can't rotate, no muscle force is required to enforce it
                 if self.RotationLimits[i][0] != self.RotationLimits[i][1]:
-                    expr += self.f[i + 3](t) ** 2
+                    expr += self.f[i + 3](time) ** 2
         return expr
 
 class JointContact(Joint):
