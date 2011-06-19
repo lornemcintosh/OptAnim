@@ -1,8 +1,12 @@
 from __future__ import division
-import os
-import sympy
 import math
+import os
 import subprocess
+import sympy
+
+#for fast quat operations (good for manipulating animation
+#data, but unsuitable for spacetime control expressions)
+from cgkit import cgtypes
 
 #degrees of freedom
 dof = int(6) #3 translational + 3 rotational
@@ -21,95 +25,86 @@ g = sympy.Matrix([[0, -9.81, 0, 0, 0, 0]])
 #this regex pattern will match floats (ex. -234 or 1.1 or .3 or +4.23e-8)
 regex_float = "([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
 
-def quat_mult(q1, q2):
-    '''Multiplies two quaternions'''
-    w1, x1, y1, z1 = q1
-    w2, x2, y2, z2 = q2
-    w = w1*w2 - x1*x2 - y1*y2 - z1*z2
-    x = w1*x2 + x1*w2 + y1*z2 - z1*y2
-    y = w1*y2 + y1*w2 + z1*x2 - x1*z2
-    z = w1*z2 + z1*w2 + x1*y2 - y1*x2
-    return [w, x, y, z]
 
-def quat_norm(quat):
-    qw, qx, qy, qz = quat
-    len = sympy.sqrt(qw ** 2 + qx ** 2 + qy ** 2 + qz ** 2)
-    return [qw / len, qx / len, qy / len, qz / len]
+def num_q_lerp(qA, qB, weight):
+    eulerA, eulerB = qA[3:dof], qB[3:dof]
+    quatA, quatB = num_euler_to_quat(eulerA), num_euler_to_quat(eulerB)
+    posA, posB = qA[:3], qB[:3]
+    newQuat = cgtypes.slerp(weight, quatA, quatB)
+    newEuler = num_quat_to_euler(newQuat)
+    newPos = vec3_lerp(posA, posB, weight)
+    ret = newPos + newEuler
+    return ret
 
-def quat_inv(quat):
-    qw, qx, qy, qz = quat_norm(quat)
-    return [qw, -qx, -qy, -qz]	#conjugate
+def vec3_lerp(v1, v2, weight):
+    v1x, v1y, v1z = v1
+    v2x, v2y, v2z = v2
+    dx = v2x-v1x
+    dy = v2y-v1y
+    dz = v2z-v1z
+    dxt = dx * weight
+    dyt = dy * weight
+    dzt = dz * weight
+    return [v1x + dxt, v1y + dyt, v1z + dzt]
 
-def axisangle_to_quat(axisangle):
-    '''Converts an axisangle to a quaternion. Axis is assumed to be normalized.'''
-    axisX,axisY,axisZ,angle = axisangle
-
-    t2 = angle / 2.0
-    st2 = sympy.sin(t2)
-    return [sympy.cos(t2),
-            st2 * axisX,
-            st2 * axisY,
-            st2 * axisZ]
-
-def quat_to_axisangle(quat):
-    qw, qx, qy, qz = quat
-    if (qw > 1):
-	qw, qx, qy, qz = quat_norm(quat)
-    angle = 2 * sympy.acos(qw)
-    s = sympy.sqrt(1-qw * qw)
-    if (s < 0.0001):
-	x = 1
-	y = z = 0
-    else:
-	x = qx / s #normalise axis
-	y = qy / s
-	z = qz / s
-    return [x, y, z, angle]
-
-def euler_to_quat(euler):
+def num_euler_to_quat(euler):
     '''Converts 3 euler angles XYZ to a quaternion (YXZ order)'''
-    rx,ry,rz = euler
-    q_xrot = axisangle_to_quat([1, 0, 0, rx])
-    q_yrot = axisangle_to_quat([0, 1, 0, ry])
-    q_zrot = axisangle_to_quat([0, 0, 1, rz])
-    return quat_mult(q_yrot, quat_mult(q_xrot, q_zrot)) #YXZ order
+    rx, ry, rz = euler
+    q_xrot = cgtypes.quat().fromAngleAxis(rx, [1, 0, 0])
+    q_yrot = cgtypes.quat().fromAngleAxis(ry, [0, 1, 0])
+    q_zrot = cgtypes.quat().fromAngleAxis(rz, [0, 0, 1])
+    return q_yrot * q_xrot * q_zrot #YXZ order
 
-'''def matrix_to_quat(m):
-    #agh! sympy is a mess, so this is using regular math libraries
-    w = math.sqrt(max(0, 1 + m[0, 0] + m[1, 1] + m[2, 2])) / 2.0;
-    x = math.sqrt(max(0, 1 + m[0, 0] - m[1, 1] - m[2, 2])) / 2.0;
-    y = math.sqrt(max(0, 1 - m[0, 0] + m[1, 1] - m[2, 2])) / 2.0;
-    z = math.sqrt(max(0, 1 - m[0, 0] - m[1, 1] + m[2, 2])) / 2.0;
+def num_quat_to_euler(quat):
+    '''Converts a quaternion to 3 euler angles XYZ (YXZ order)'''
+    quat = quat.normalize()
+    qw, qx, qy, qz = quat.w, quat.x, quat.y, quat.z
 
-    x = math.copysign(x, m[2, 1] - m[1, 2])
-    y = math.copysign(y, m[0, 2] - m[2, 0])
-    z = math.copysign(z, m[1, 0] - m[0, 1])
-    return [w, x, y, z]'''
+    test = qx * qy + qz * qw
+    if (test > 0.4995): #singularity at north pole
+        x = 0
+        y = 2 * math.atan2(qx, qw)
+        z = math.pi / 2
+        return [x, y, z]
 
-def euler_to_matrix(euler):
-    '''Converts 3 euler angles XYZ to a rotation matrix (YXZ order)'''
+    if (test < -0.4995): #singularity at south pole
+        x = 0
+        y = -2 * math.atan2(qx, qw)
+        z = - math.pi / 2
+        return [x, y, z]
+
+    sqx = qx * qx
+    sqy = qy * qy
+    sqz = qz * qz
+    x = math.atan2(2 * qx * qw-2 * qy * qz, 1 - 2 * sqx - 2 * sqz)
+    y = math.atan2(2 * qy * qw-2 * qx * qz, 1 - 2 * sqy - 2 * sqz)
+    z = math.asin(2 * test)
+    return [x, y, z]
+
+def sym_euler_to_matrix(euler):
+    '''(symbolic!) Converts 3 euler angles XYZ to a rotation matrix (YXZ order)'''
     rx, ry, rz = euler
     X = sympy.Matrix([
-		     [1,	0,	0],
-		     [0,	sympy.cos(rx), -sympy.sin(rx)],
-		     [0,	sympy.sin(rx), sympy.cos(rx)]
-		     ])
+                     [1,	0,	0],
+                     [0,	sympy.cos(rx), -sympy.sin(rx)],
+                     [0,	sympy.sin(rx), sympy.cos(rx)]
+                     ])
     Y = sympy.Matrix([
-		     [sympy.cos(ry), 0, sympy.sin(ry)],
-		     [0, 1, 0],
-		     [-sympy.sin(ry), 0, sympy.cos(ry)]
-		     ])
+                     [sympy.cos(ry), 0, sympy.sin(ry)],
+                     [0, 1, 0],
+                     [-sympy.sin(ry), 0, sympy.cos(ry)]
+                     ])
     Z = sympy.Matrix([
-		     [sympy.cos(rz),	-sympy.sin(rz),	0],
-		     [sympy.sin(rz),	sympy.cos(rz),	0],
-		     [0,	0,	1]
-		     ])
+                     [sympy.cos(rz),	-sympy.sin(rz),	0],
+                     [sympy.sin(rz),	sympy.cos(rz),	0],
+                     [0,	0,	1]
+                     ])
     #we use YXZ order (y-axis first) so that rotations around the y-axis can be done
     #by just changing the y euler angle (without needing to multiply matricies)
     return Y * X * Z
 
-def matrix_to_euler(mat):
-    '''Converts a rotation matrix (YXZ order) to 3 euler angles XYZ. Note that
+def sym_matrix_to_euler(mat):
+    '''(symbolic!) Converts a rotation matrix (YXZ order) to 3 euler angles XYZ. Note that
     for simplicity this ignores the singularities.'''
     #XYZ
     #x = sympy.atan2(-mat[1, 2], mat[2, 2])
@@ -123,19 +118,19 @@ def matrix_to_euler(mat):
 
     return [x, y, z]
 
-def world_xf(point, coords, worldToLocal=False):
-    '''transforms a point from local to world coordinates'''
+def sym_world_xf(point, coords, worldToLocal=False):
+    '''(symbolic!) Transforms a point from local to world coordinates'''
     trans = sympy.Matrix(coords[:3])
     p = sympy.Matrix([point[0], point[1], point[2]])
 
     if worldToLocal:
 	euler = [-x for x in coords[3:]]
 	euler.reverse()
-	rotinv = euler_to_matrix(euler)
+	rotinv = sym_euler_to_matrix(euler)
 	return rotinv * (p - trans)	#world to local
     else:
 	euler = coords[3:]
-	rot = euler_to_matrix(euler)
+	rot = sym_euler_to_matrix(euler)
 	return (rot * p) + trans	#local to world
     
 
@@ -176,5 +171,5 @@ def guess_contact_time(leg_length=1.0, speed=1.0):
     '''Calculates a reasonable contact (stance) time (s) given leg length (m) and movement speed (m/s)'''
     #formula from paper: TIME OF CONTACT AND STEP LENGTH...
     #http://jeb.biologists.org/content/203/2/221.full.pdf
-    time_contact = (0.80*leg_length**0.84)/(speed**0.87)
+    time_contact = (0.80 * leg_length ** 0.84) / (speed ** 0.87)
     return time_contact #in seconds

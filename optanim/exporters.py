@@ -17,21 +17,21 @@ def export_ogre_skeleton_xml(anim):
 
 	position = ET.SubElement(bone, "position")
 	if i == 0:
-	    position.set("x", "%.8f" % rootoffset[0])
-	    position.set("y", "%.8f" % rootoffset[1])
-	    position.set("z", "%.8f" % rootoffset[2])
+	    position.set("x", "%.9f" % rootoffset[0])
+	    position.set("y", "%.9f" % rootoffset[1])
+	    position.set("z", "%.9f" % rootoffset[2])
 	else:
 	    offset = [ body.ParentJoint.PointA[i] - body.Parent.ep_a()[i] for i in range(len(body.Parent.ep_a()))]
-	    position.set("x", "%.8f" % offset[0])
-	    position.set("y", "%.8f" % offset[1])
-	    position.set("z", "%.8f" % offset[2])
+	    position.set("x", "%.9f" % offset[0])
+	    position.set("y", "%.9f" % offset[1])
+	    position.set("z", "%.9f" % offset[2])
 
 	rotation = ET.SubElement(bone, "rotation")
-	rotation.set("angle", "%.8f" % 0.0)
+	rotation.set("angle", "%.9f" % 0.0)
 	axis = ET.SubElement(rotation, "axis")
-	axis.set("x", "%.8f" % 1.0)
-	axis.set("y", "%.8f" % 0.0)
-	axis.set("z", "%.8f" % 0.0)
+	axis.set("x", "%.9f" % 1.0)
+	axis.set("y", "%.9f" % 0.0)
+	axis.set("z", "%.9f" % 0.0)
 
     bonehierarchy = ET.SubElement(root, "bonehierarchy")
     for i, joint in enumerate(anim.Character.JointList):
@@ -59,8 +59,8 @@ def export_ogre_skeleton_xml(anim):
 	    bonepos = []
 	    if i == 0:
 		#get position of root
-		q = [anim.AnimationData[str(body.q[x])][frame] for x in range(dof)]
-		bonepos = world_xf(body.ep_a(), q)
+		q = anim.AnimationData[str(body.Name)][frame]
+		bonepos = sym_world_xf(body.ep_a(), q)
 		#in ogre, the root translation seems to be expressed relative to
 		#its "root pose" specified above, so here we subtract it out
 		bonepos[0] = bonepos[0] - rootoffset[0]
@@ -69,41 +69,37 @@ def export_ogre_skeleton_xml(anim):
 	    else:
 		bonepos = [0.0]*3
 	    translate = ET.SubElement(keyframe, "translate")
-	    translate.set("x", "%.8f" % bonepos[0])
-	    translate.set("y", "%.8f" % bonepos[1])
-	    translate.set("z", "%.8f" % bonepos[2])
+	    translate.set("x", "%.9f" % bonepos[0])
+	    translate.set("y", "%.9f" % bonepos[1])
+	    translate.set("z", "%.9f" % bonepos[2])
 
 	    axisangle = [0.0]*4
 	    if i == 0:
-		rootEuler = [anim.AnimationData[str(body.q[x])][frame] for x in range(3,dof)]
+		rootEuler = anim.AnimationData[str(body.Name)][frame][3:dof]
 		#convert to axis angle... by way of a quat :)
-		quat = euler_to_quat(rootEuler)
-		quat = map(float, quat)
-		axisangle = quat_to_axisangle(quat)
-		axisangle = map(float, axisangle)
+		quat = num_euler_to_quat(rootEuler)
+                tmp = quat.toAngleAxis()
+		axisangle = [tmp[1].x, tmp[1].y, tmp[1].z, tmp[0]]
 	    else:
-		childEuler = [anim.AnimationData[str(body.q[x])][frame] for x in range(3,dof)]
-		childQuat = euler_to_quat(childEuler)
-		childQuat = map(float, childQuat)
+		childEuler = anim.AnimationData[str(body.Name)][frame][3:dof]
+		childQuat = num_euler_to_quat(childEuler)
 
-		parentEuler = [anim.AnimationData[str(body.Parent.q[x])][frame] for x in range(3,dof)]
-		parentQuat = euler_to_quat(parentEuler)
-		parentQuat = map(float, parentQuat)
+		parentEuler = anim.AnimationData[str(body.Parent.Name)][frame][3:dof]
+		parentQuat = num_euler_to_quat(parentEuler)
 
 		#express child relative to parent
-		relativeQuat = quat_mult(quat_inv(parentQuat), childQuat)
-		relativeQuat = map(float, relativeQuat)
+                relativeQuat = parentQuat.inverse() * childQuat
 
 		#convert to axis angle
-		axisangle = quat_to_axisangle(relativeQuat)
-		axisangle = map(float, axisangle)
+                tmp = relativeQuat.toAngleAxis()
+		axisangle = [tmp[1].x, tmp[1].y, tmp[1].z, tmp[0]]
 
 	    rotate = ET.SubElement(keyframe, "rotate")
-	    rotate.set("angle", "%.8f" % axisangle[3])
+	    rotate.set("angle", "%.9f" % axisangle[3])
 	    axis = ET.SubElement(rotate, "axis")
-	    axis.set("x", "%.8f" % axisangle[0])
-	    axis.set("y", "%.8f" % axisangle[1])
-	    axis.set("z", "%.8f" % axisangle[2])
+	    axis.set("x", "%.9f" % axisangle[0])
+	    axis.set("y", "%.9f" % axisangle[1])
+	    axis.set("z", "%.9f" % axisangle[2])
 
     #TODO: HACK: oh the lengths I'll go to for some pretty printing
     rough_string = ET.tostring(root, 'utf-8')
@@ -146,30 +142,45 @@ def _get_bvh_motion(character, body, level, frame, data):
     ret = ''
     #special case for root
     if level == 0:
-	q = [data[str(body.q[x])][frame] for x in range(dof)]
-	pos = world_xf(body.ep_a(), q)
+	q = data[str(body.Name)][frame]
+	pos = sym_world_xf(body.ep_a(), q)
 	pos = map(float, pos)	#evaluate sympy expression to a float
-	ret += '{: .8f} {: .8f} {: .8f} '.format(*pos)
+	ret += '{: .9f} {: .9f} {: .9f} '.format(*pos)
 
 	rot = [float(q[x] * (180.0 / math.pi)) for x in range(3,dof)] #convert to degrees
 	rot[0], rot[1] = rot[1], rot[0]	#swap x and y (so we output YXZ)
-	ret += '{: .8f} {: .8f} {: .8f} '.format(*rot)
+	ret += '{: .9f} {: .9f} {: .9f} '.format(*rot)
 
     #regular case
     else:
 	#this will convert the rotations of the child and parent to matricies, express
 	#the child relative to the parent, and convert them back to euler angles again
-	childEuler = [data[str(body.q[x])][frame] for x in range(3,dof)]
-	childMat = euler_to_matrix(childEuler).evalf()
+	'''
+        childEuler = data[str(body.Name)][frame][3:dof]
+	childMat = sym_euler_to_matrix(childEuler).evalf()
 
-	parentEuler = [data[str(body.Parent.q[x])][frame] for x in range(3,dof)]
-	parentMat = euler_to_matrix(parentEuler).evalf()
+	parentEuler = data[str(body.Parent.Name)][frame][3:dof]
+	parentMat = sym_euler_to_matrix(parentEuler).evalf()
 
 	m = (parentMat.inv() * childMat).evalf() #express child relative to parent
-	r = matrix_to_euler(m)
+	r = sym_matrix_to_euler(m)
+        '''
+        
+        childEuler = data[str(body.Name)][frame][3:dof]
+        childQuat = num_euler_to_quat(childEuler)
+
+        parentEuler = data[str(body.Parent.Name)][frame][3:dof]
+        parentQuat = num_euler_to_quat(parentEuler)
+
+        #express child relative to parent
+        relativeQuat = parentQuat.inverse() * childQuat
+
+        #convert to euler
+        r = num_quat_to_euler(relativeQuat)
+
 	r = [float(x * (180.0 / math.pi)) for x in r]	#convert to degrees
 	r[0], r[1] = r[1], r[0]	#swap x and y (so we output YXZ)
-	ret += '{: .8f} {: .8f} {: .8f} '.format(*r)
+	ret += '{: .9f} {: .9f} {: .9f} '.format(*r)
 
     level += 1;
     for child in body.ChildList:
@@ -233,11 +244,9 @@ def export_bvh_flat(anim):
     for frame in range(len(anim.AnimationData.items()[0][1])):
 	ret += '%f %f %f %f %f %f ' % (0, 0, 0, 0, 0, 0) #root doesn't move
 	for body in anim.Character.BodyList:
-	    q = [anim.AnimationData[str(body.q[x])][frame] for x in range(dof)]
-	    qtx, qty, qtz = world_xf(body.ep_a(), q)
-	    qrx = anim.AnimationData[str(body.q[3])][frame] * (180.0 / math.pi)
-	    qry = anim.AnimationData[str(body.q[4])][frame] * (180.0 / math.pi)
-	    qrz = anim.AnimationData[str(body.q[5])][frame] * (180.0 / math.pi)
+	    q = anim.AnimationData[str(body.Name)][frame]
+	    qtx, qty, qtz = sym_world_xf(body.ep_a(), q)
+	    qrx, qry, qrz = [x * (180.0 / math.pi) for x in anim.AnimationData[str(body.Name)][frame][3:dof]]
 	    ret += ''.join(('%f ' % x) for x in [qtx, qty, qtz])
 	    ret += ''.join(('%f ' % x) for x in [qry, qrx, qrz])    #YXZ
 	ret += '\n'

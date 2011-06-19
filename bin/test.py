@@ -232,7 +232,7 @@ def main():
 
     #turning
     turnRadii = [x*x*x for x in numpy.arange(0.3, 2.1, 0.2)]
-    print zip(turnRadii,[min(speed/r, 2.0) for r in turnRadii])
+    #print zip(turnRadii,[min(speed/r, 2.0) for r in turnRadii])
     c_turn = [[
 	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.0), 0]),
 	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
@@ -319,6 +319,7 @@ def main():
     anim_walk.wait_for_results()
     anim_run.wait_for_results()
 
+    '''
     animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
     finalAnimList = []
     for anim in animList:
@@ -326,7 +327,11 @@ def main():
         if anim.Solved and anim.ObjectiveValue < 240:
             finalAnimList.append(anim)
 
+    blendedAnim = finalAnimList[0].blend(finalAnimList[1], 0.5)
+    blendedAnim.export('.\\blended')
+
     for anim in finalAnimList:
+        anim = anim.animdata_resample(60) #upsample to 60 fps
         anim.export('.\\anims')
 
     for anim in finalAnimList:
@@ -334,18 +339,18 @@ def main():
 
     for anim in finalAnimList:
             print "\""+anim.Name+"\","
+    '''
 
 
     #experiment to see if we can blend them:
     #=================================================
-    '''
-    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList
+    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
     slicedAnimList = [[] for i in range(2**2)]  #TODO: fix this for other characters
 
     for anim in animList:
 
         #discard the poor ones
-        if anim.ObjectiveValue > 50:
+        if anim.ObjectiveValue > 240:
             continue
 
         jointsContact = anim.Character.get_joints_contact()
@@ -367,8 +372,11 @@ def main():
         for i, contactType in enumerate(frameSetList):
             for j, f in enumerate(contactType):
                 newanim = anim.get_frame_slice(f[0], f[len(f)-1])
-                newanim.Name = str(i) + "_" + newanim.Name + "_" + str(f[0]) + "to" + str(f[len(f)-1])
+                newanim.Name = str(i) + "_" + newanim.Name
                 slicedAnimList[i].append(newanim)
+
+    for i, contactType in enumerate(slicedAnimList):
+        print "Contact type " + str(i) + " has " + str(len(contactType)) + " clips."
 
     for i in slicedAnimList:
         for anim in i:
@@ -390,15 +398,14 @@ def main():
             newanim.Name = x[0].Name + "_blend0.5_" + x[1].Name
             blendedAnimList.append(newanim)
 
-    for i in blendedAnimList:
+    for anim in blendedAnimList:
         anim.export('.\\blended')
 
-    for i in blendedAnimList:
+    for anim in blendedAnimList:
         print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
 
-    for i in blendedAnimList:
+    for anim in blendedAnimList:
         print "\""+anim.Name+"\","
-    '''
     #=================================================
 
     #export the original animations
@@ -571,3 +578,10 @@ if __name__ == '__main__':
     print('Running Python '+sys.version)
 
     main()
+
+    '''
+    import cProfile, pstats
+    cProfile.run('main()', 'main.profile')
+    p = pstats.Stats('main.profile')
+    p.sort_stats('cumulative').print_stats(30)
+    '''

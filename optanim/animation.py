@@ -1,15 +1,17 @@
 from __future__ import division
+
+import math
+import copy
 import itertools
 import numpy
 import re
-import cma
-import copy
 import time
 
-from threadpool import *
+import cma
 from exporters import *
-from specifier import *
 from joints import *
+from specifier import *
+from threadpool import *
 from utils import *
 
 pool = ThreadPool()
@@ -75,9 +77,9 @@ class AnimationSpec(object):
                 animSpecifierList = character.SpecifierList + self.SpecifierList + paramList
 
                 #create an animation instance
-                animName =  character.Name + "_" + self.Name + "_" + str(index)
+                animName = character.Name + "_" + self.Name + "_" + str(index)
                 anim = Animation(animName, self.Length, self.FPS, character,
-                    animSpecifierList, self.ContactTimesDict);
+                                 animSpecifierList, self.ContactTimesDict);
                 self.AnimationList.append(anim)
                 anim.optimize(solver)  #non-blocking
 
@@ -145,29 +147,100 @@ class Animation(object):
             raise BaseException('Character "%s" has a contact joint "%s". You must specify timings for %s.' % (self.Character.Name, joint.Name, joint.Name))
 
     def get_frame_slice(self, firstFrame, lastFrame):
+        '''Returns a new Animation containing just the frames between firstFrame and lastFrame'''
         #take a 1 extra frame on each side
         firstFrame -= 1
         firstFrame = max(0, firstFrame)
         lastFrame += 1
         lastFrame = min(self.get_frame_count(), lastFrame)
 
-        ret = copy.deepcopy(self)
+        newName = self.Name + "_" + str(firstFrame) + "to" + str(lastFrame)
+        newLength = (lastFrame-firstFrame+1)*self.get_frame_length()
+        ret = Animation(newName, newLength, self.FPS, self.Character, None, None)
+        
+        #setup animation data
+        ret.AnimationData = {}
+        for body in ret.Character.BodyList:
+            ret.AnimationData[str(body.Name)] = [None] * ret.get_frame_count()
+
+        #copy slice of animation data from original
         for k, v in ret.AnimationData.items():
-            ret.AnimationData[k] = ret.AnimationData[k][firstFrame:lastFrame+1]
+            ret.AnimationData[k] = self.AnimationData[k][firstFrame:lastFrame + 1]
+
+        ret.Done = True
+        ret.Solved = True
+        
         return ret
 
-    #def get_interpolate(self, time):
-        #'''returns the state at time, where time is 0 to 1'''
-        #frameA = floor(time * len(anim.AnimationData.items()[0][1]))
-        #frameB = ceil(time * len(anim.AnimationData.items()[0][1]))
-        #if frameA == frameB:
-            #return self.AnimationData
+    def animdata_resample(self, fps):
+        ret = copy.deepcopy(self)   #TODO: get rid of this deepcopy (too memory hungry)
+        ret.FPS = fps
+        frameCount = ret.get_frame_count()
 
-    #def blend(self, other, weight):
-        #ret = copy.deepcopy(self)
-        #for k, v in ret.AnimationData.items():
-            #ret.AnimationData[k] =
-        #return ret
+        #clear existing animation data
+        ret.AnimationData = {}
+        for body in ret.Character.BodyList:
+            ret.AnimationData[str(body.Name)] = [None] * frameCount
+
+        #do the resampling
+        for frame in range(frameCount):
+            time = frame / (frameCount-1)
+            interpData = self.animdata_get_interpolated(time)
+            for body in ret.Character.BodyList:
+                ret.AnimationData[str(body.Name)][frame] = interpData[body.Name][0]
+
+        return ret
+
+    def animdata_get_interpolated(self, time):
+        '''Returns the interpolated state at time, where time is 0 to 1'''
+        assert(0.0 <= time <= 1.0)
+
+        nframes = (len(self.AnimationData.items()[0][1])-1)
+        frameA = int(math.floor(time * nframes))
+        frameB = int(math.ceil(time * nframes))
+
+        ret = copy.deepcopy(self.AnimationData)
+        if frameA == frameB:
+            for k, v in ret.items():
+                ret[k] = ret[k][frameA:frameB + 1]
+            #print str(time)+", "+str(frameA)+" == "+str(frameB)+", "+str(ret["C_torso"])
+            return ret
+        else:
+            timeA = frameA / nframes
+            timeB = frameB / nframes
+            timeAB = (time - timeA) / (timeB - timeA)
+            for k, v in ret.items():
+                dataA = ret[k][frameA]
+                dataB = ret[k][frameB]
+                ret[k] = [num_q_lerp(dataA, dataB, timeAB)]
+            #print str(time)+", "+str(frameA)+" != "+str(frameB)+", timeAB="+str(timeAB)+", "+str(ret["C_torso"])
+            return ret
+
+    def blend(self, other, weight, fps=25):
+        print "Blending " + str(self.Name) + " and " + str(other.Name) + ". Weight = " + str(weight)
+
+        #calculate length (in seconds) of new animation clip:
+        #(formula from Safonova & Hodgins / Analyzing the Physical Correctness of Interpolated Human Motion)
+        length = math.sqrt(math.pow(self.Length,2)*weight + math.pow(other.Length,2)*(1-weight))
+        
+        ret = Animation(str(self.Name) + "_and_" + str(other.Name), length, fps, self.Character, None, None)
+
+        frameCount = ret.get_frame_count()
+
+        for body in ret.Character.BodyList:
+            ret.AnimationData[str(body.Name)] = [None] * frameCount
+
+        for frame in range(frameCount):
+            frameTime = frame / (frameCount-1)
+            a = self.animdata_get_interpolated(frameTime)
+            b = other.animdata_get_interpolated(frameTime)
+            for body in ret.Character.BodyList:
+                ret.AnimationData[str(body.Name)][frame] = num_q_lerp(a[str(body.Name)][0], b[str(body.Name)][0], weight)
+        
+        ret.Done = True
+        ret.Solved = True
+
+        return ret
 
     def _write_header(self):
 	ret = ''
@@ -223,8 +296,13 @@ class Animation(object):
 	    for i, obj in enumerate(self.CachedObjectiveList):
 		ret += obj.write_debug_str()
 
-	ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
-	ret += 'exit;\n'
+	ret += 'if solve_result = "solved" then {\n'
+        for frame in range(0, self.get_frame_count()):
+            for body in self.Character.BodyList:
+                varstr = ', '.join([str(body.q[x]) + '[' + str(frame) + ']' for x in range(0, dof)])
+                fstr = ', '.join(['%f'] * dof)
+                ret += '\tprintf "' + str(body.Name) + '[' + str(frame) + '] = ' + fstr + '\\n", ' + varstr + ';\n'
+	ret += '}\nexit;\n'
 	return ret
 
     def _solvedcallback(self, amplresult):
@@ -236,34 +314,32 @@ class Animation(object):
         file.close()
 
 	#did it solve correctly?
-	self.Solved = (" = solved" in amplresult)
+	self.Solved = ("solve_result = solved" in amplresult)
 	if self.Solved:
 	    if len(self.CachedObjectiveList) > 0:
-		objectivematch = re.search("(?<=objective = )"+regex_float, amplresult)
+		objectivematch = re.search("(?<=objective = )" + regex_float, amplresult)
 		self.ObjectiveValue = float(objectivematch.group(0))
 
-	    #read the solution variables into a dict
-	    #this assumes AMPL will output them in order of ascending indices
-	    #myvar[0]... myvar[1]... myvar[2] etc.
-	    pattern = "\d+\s+'(\w+)\[(\d+)]'\s+"+regex_float
-	    matches = re.findall(pattern, amplresult)
-	    for match in matches:
-		if match[0] not in self.AnimationData:
-		    self.AnimationData[match[0]] = [float(match[2])]
-		else:
-		    self.AnimationData[match[0]].append(float(match[2]))
+            #read the solution variables into a dict {indexed on body name}[frame][dof]
+	    self.AnimationData = {}
+            for body in self.Character.BodyList:
+                self.AnimationData[str(body.Name)] = [None] * self.get_frame_count()
+                for frame in range(0, self.get_frame_count()):
+                    regex_float_str = ', '.join([regex_float] * dof)
+                    pattern = str(body.Name) + "\[" + str(frame) + "\] = " + regex_float_str
+                    match = re.findall(pattern, amplresult)[0]
+                    q = [float(match[x * 2]) for x in range(dof)]
+                    self.AnimationData[str(body.Name)][frame] = q
 
             #if looped, append an extra frame (identical to first frame, but offset)
 	    for s in self.SpecifierList:
 		if isinstance(s, SpecifierPluginLoop):
-		    #for frame in range(0,self.get_frame_count()):   #duplicate every frame (loop 2x)
-                    for frame in range(0,1):   #duplicate first 1 frame
+                    for frame in range(0, 1):   #duplicate first 1 frame
                         for b in self.Character.BodyList:
-                            q = [self.AnimationData[str(x)][frame] for x in b.q]
+                            q = self.AnimationData[str(b.Name)][frame]
                             q = s.get_offset(q, 1) #apply offset
                             q = map(float, q)
-                            for k,bq in enumerate(b.q):
-                                self.AnimationData[str(bq)].append(q[k]) #append extra frame
+                            self.AnimationData[str(b.Name)].append(q) #append extra frame
 
             print('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
 
@@ -282,11 +358,13 @@ class Animation(object):
         file.write(export_bvh(self))
         file.close()
 
+        '''
         filename = outdir + "\\" + self.Name + '.flat.bvh'
         print('%s,' % filename),
         file = openfile(filename, 'w')
         file.write(export_bvh_flat(self))
         file.close()
+        '''
 
         filename = outdir + "\\" + self.Name + '.skeleton.xml'
         print('%s' % filename)
@@ -322,17 +400,18 @@ class Animation(object):
                     elif isinstance(c, Objective):
                         self.CachedObjectiveList.append(c)
 
-	amplcmd = ''
-	amplcmd += self._write_header()
-	amplcmd += self.Character.get_model()   #character body & physical eq.
-	amplcmd += self._write_specifiers()     #other constraints & objectives
-	amplcmd += self._write_footer(solver)
+        #generate the ampl model
+        amplcmd = ''
+        amplcmd += self._write_header()
+        amplcmd += self.Character.get_model()   #character body & physical eq.
+        amplcmd += self._write_specifiers()     #other constraints & objectives
+        amplcmd += self._write_footer(solver)
 
-	#for debugging we'll write out the ampl file
-	if writeAMPL:
-	    file = open(self.Name + '.ampl', 'w')
-	    file.write(amplcmd)
-	    file.close()
+        #for debugging purposes we'll write out the ampl file
+        if writeAMPL:
+            file = open(self.Name + '.ampl', 'w')
+            file.write(amplcmd)
+            file.close()
 
 	try:
 	    #try to load cached solution
@@ -342,7 +421,7 @@ class Animation(object):
             #pretend it solved, and use the callback
             self._solvedcallback(amplresult)
 
-	except:
+	except IOError:
 	    #couldn't load cached solution file, we'll have to solve it with ampl
             #use the thread pool for this
             pool.add_job(amplsolve, args=[amplcmd], return_callback=self._solvedcallback)
@@ -362,19 +441,19 @@ class Animation(object):
 	    upperBounds = []
 	    if optLength:
 		startPoint.append(0.5)
-		lowerBounds.append(self.get_frame_length()*3.0) #3 frame minimum
+		lowerBounds.append(self.get_frame_length() * 3.0) #3 frame minimum
 		upperBounds.append(1.0)
 	    if optContacts:
-		f = 1.0/len(self.Character.get_joints_contact())
-		for j,joint in enumerate(self.Character.get_joints_contact()):
-		    evenly = (j*f)+(f/2.0) #space the contacts evenly
+		f = 1.0 / len(self.Character.get_joints_contact())
+		for j, joint in enumerate(self.Character.get_joints_contact()):
+		    evenly = (j * f) + (f / 2.0) #space the contacts evenly
 		    startPoint.extend([evenly, 0.5])
 		    lowerBounds.extend([0.0, 0.0])
 		    upperBounds.extend([1.0, 1.0])
 
 	    #optimize anim length and contact timings with CMA-ES
 	    es = cma.CMAEvolutionStrategy(startPoint, 1.0 / 3.0,
-		{'maxiter':100, 'bounds':[lowerBounds, upperBounds]})
+                                          {'maxiter':100, 'bounds':[lowerBounds, upperBounds]})
 
 	    # iterate until termination
 	    while not es.stop:
@@ -390,7 +469,7 @@ class Animation(object):
 			    m = 1 if optLength else 0
 			    self.ContactTimesDict = {}
 			    for j, joint in enumerate(self.Character.get_joints_contact()):
-				self.ContactTimesDict[joint] = [(x[j*2+0+m], x[j*2+1+m])]
+				self.ContactTimesDict[joint] = [(x[j * 2 + 0 + m], x[j * 2 + 1 + m])]
 			curr_fit = self._solve(solver)  #might return numpy.NaN
 		    fit.append(curr_fit)
 		    X.append(x)
@@ -410,7 +489,7 @@ class Animation(object):
 		m = 1 if optLength else 0
 		self.ContactTimesDict = {}
 		for j, joint in enumerate(self.Character.get_joints_contact()):
-		    self.ContactTimesDict[joint] = [(es.best[0][j*2+0+m], es.best[0][j*2+1+m])]
+		    self.ContactTimesDict[joint] = [(es.best[0][j * 2 + 0 + m], es.best[0][j * 2 + 1 + m])]
 	    return self._solve(solver, writeAMPL=True)
 
 	else:

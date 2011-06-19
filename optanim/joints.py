@@ -46,8 +46,8 @@ class JointRevolute(Joint):
     def get_state_constraints(self):
 	#constraints enforced by joint forces
 	retList = []
-	worldpointA = world_xf(self.PointA, [bq(t) for bq in self.BodyA.q])
-	worldpointB = world_xf(self.PointB, [bq(t) for bq in self.BodyB.q])
+	worldpointA = sym_world_xf(self.PointA, [bq(t) for bq in self.BodyA.q])
+	worldpointB = sym_world_xf(self.PointB, [bq(t) for bq in self.BodyB.q])
 
 	retList.append(ConstraintEq(self.Name + "_tx", worldpointA[0] - worldpointB[0]))
 	retList.append(ConstraintEq(self.Name + "_ty", worldpointA[1] - worldpointB[1]))
@@ -145,8 +145,8 @@ class JointContact(Joint):
 	tRangeOn = 't in sTimeSteps_' + self.Name + 'On'
 
 	#'zero velocity' constraints
-	worldpoint_t0 = world_xf(self.Point, [bq(t) for bq in self.Body.q])
-	worldpoint_t1 = world_xf(self.Point, [bq(t-1) for bq in self.Body.q])
+	worldpoint_t0 = sym_world_xf(self.Point, [bq(t) for bq in self.Body.q])
+	worldpoint_t1 = sym_world_xf(self.Point, [bq(t-1) for bq in self.Body.q])
 	retList.append(ConstraintEq(self.Name + '_state_x', worldpoint_t0[0], worldpoint_t1[0], TimeRange=tRangeOn + ' && t>pTimeBegin'))
 	retList.append(ConstraintEq(self.Name + '_state_y', worldpoint_t0[1], TimeRange=tRangeOn))
 	retList.append(ConstraintEq(self.Name + '_state_z', worldpoint_t0[2], worldpoint_t1[2], TimeRange=tRangeOn + ' && t>pTimeBegin'))

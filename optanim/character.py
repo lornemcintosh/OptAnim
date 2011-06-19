@@ -167,7 +167,7 @@ class Character(object):
 		    #endpoint A
 		    point = bodyB.ep_a()
 		    point[1] -= 0.01    #bring point inside just a little
-		    worldpoint = world_xf(point, [bq(t) for bq in bodyB.q])
+		    worldpoint = sym_world_xf(point, [bq(t) for bq in bodyB.q])
 		    eq = bodyA.get_intersection_constraint(worldpoint)
 		    eq.Name += '_'+bodyB.Name+'_epa'
 		    model += (str(eq))
@@ -175,7 +175,7 @@ class Character(object):
 		    #endpoint B
 		    point = bodyB.ep_b()
 		    point[1] += 0.01	#bring point inside just a little
-		    worldpoint = world_xf(point, [bq(t) for bq in bodyB.q])
+		    worldpoint = sym_world_xf(point, [bq(t) for bq in bodyB.q])
 		    eq = bodyA.get_intersection_constraint(worldpoint)
 		    eq.Name += '_'+bodyB.Name+'_epb'
 		    model += (str(eq))

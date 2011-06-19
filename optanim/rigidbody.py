@@ -72,5 +72,5 @@ class RigidBody(object):
 	a,b,c = [x/2.0 for x in self.Diameter]
 	r = sphereDiameter/2.0
 	#transform point into body-local coordinates
-	x,y,z = world_xf(spherePoint, [bq(t) for bq in self.q], worldToLocal=True)
+	x,y,z = sym_world_xf(spherePoint, [bq(t) for bq in self.q], worldToLocal=True)
 	return Constraint('NoIntersection_' + self.Name, 1, (x**2/(a+r)**2) + (y**2/(b+r)**2) + (z**2/(c+r)**2))

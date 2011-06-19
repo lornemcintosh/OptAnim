@@ -1,6 +1,5 @@
 OptAnim, Copyright (c) 2011 Lorne McIntosh
 
-- Constraint and Objective should be subclasses of 1 superclass, and should be added to animations in the same way
 - Name animations better. Each parameter should contribute a short string to the final name (ex. Mortimer_locomote_1.4mps_1.0rad_forward.bvh)
 - More realistic modeling of joints/muscles
 - Add system for making transition animations (between frames of regular animations)

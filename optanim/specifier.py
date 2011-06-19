@@ -112,7 +112,7 @@ class SpecifierPluginLoop(SpecifierPlugin):
 	if self.angVel[0] is not 0 or self.angVel[1] is not 0 or self.angVel[2] is not 0:
 	    #rotate body positions around a point
 	    rotCenterWorld = sympy.Matrix([0,0,0]) #rotation (pivot) point; just the origin for now
-	    rotmat = euler_to_matrix([dir*k*self.animation.Length for k in self.angVel])
+	    rotmat = sym_euler_to_matrix([dir*k*self.animation.Length for k in self.angVel])
 	    q[:3] = (rotmat * (sympy.Matrix(q[:3]) - rotCenterWorld)) + rotCenterWorld
 	    
 	    #also the bodies themselves rotate:
@@ -122,9 +122,9 @@ class SpecifierPluginLoop(SpecifierPlugin):
 		q[4] = q[4]+(dir*self.angVel[1]*self.animation.Length)
 	    else:
 		#generic method, always works
-		currRotMat = euler_to_matrix(q[3:])
+		currRotMat = sym_euler_to_matrix(q[3:])
 		newRotMat = (rotmat*currRotMat)
-		q[3:] = matrix_to_euler(newRotMat)
+		q[3:] = sym_matrix_to_euler(newRotMat)
 
 	#finally we add a simple offset to body positions and rotations
 	q = [x+(dir*self.vel[k]*self.animation.Length) for k,x in enumerate(q)]
@@ -149,8 +149,8 @@ class SpecifierPluginLoop(SpecifierPlugin):
 	    begin = self.get_offset([x('pTimeBegin') for x in j.Body.q], 1)
 	    end = [x('pTimeEnd') for x in j.Body.q]
 
-	    worldpoint_Begin = list(world_xf(j.Point, begin))
-	    worldpoint_End = list(world_xf(j.Point, end))
+	    worldpoint_Begin = list(sym_world_xf(j.Point, begin))
+	    worldpoint_End = list(sym_world_xf(j.Point, end))
 
 	    #loop the contact joint 'zero velocity' constraints (see joints.py)
 	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_Begin[0], worldpoint_End[0], TimeRange=tRangeOn + ' && t=pTimeBegin'))
@@ -172,8 +172,8 @@ class SpecifierPluginGroundPlane(SpecifierPlugin):
     def get_specifiers(self, animation, character):
 	retList = []
 	for body in character.BodyList:
-	    worldpointA = world_xf(body.ep_a(), [bq(t) for bq in body.q])
-	    worldpointB = world_xf(body.ep_b(), [bq(t) for bq in body.q])
+	    worldpointA = sym_world_xf(body.ep_a(), [bq(t) for bq in body.q])
+	    worldpointB = sym_world_xf(body.ep_b(), [bq(t) for bq in body.q])
 	    retList.append(Constraint(body.Name + '_AboveGroundPlane_A', lb=0, c=worldpointA[1]))
 	    retList.append(Constraint(body.Name + '_AboveGroundPlane_B', lb=0, c=worldpointB[1]))
 	return retList
