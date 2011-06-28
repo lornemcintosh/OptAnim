@@ -30,32 +30,10 @@ class RigidBody(object):
 	    sympy.Symbol(Name + "_qry"),
 	    sympy.Symbol(Name + "_qrz")]
 
-	#these references make it convenient to traverse the character as a tree
-	self.ChildList = []
-	self.Parent = None
-	self.ChildJointList = []
-	self.ParentJoint = None
-
 	print 'new ' + str(self)
 
     def __str__(self):
 	return 'RigidBody "' + self.Name + '": diameter = ' + str(self.Diameter) + ', mass = ' + str(self.Mass)
-    
-    def add_child(self, body):
-	self.ChildList.append(body)
-
-    def set_parent(self, body):
-	if(self.Parent is not None):
-	    raise BaseException(self.Name + " already has parent body assigned! Make sure you're creating joints such that BodyA always points 'up' towards Root.")
-	self.Parent = body
-
-    def add_child_joint(self, joint):
-	self.ChildJointList.append(joint)
-
-    def set_parent_joint(self, joint):
-	if(self.ParentJoint is not None):
-	    raise BaseException(self.Name + " already has parent joint assigned! Make sure you're creating joints such that BodyA always points 'up' towards Root.")
-	self.ParentJoint = joint
 
     def ep_a(self):
 	'''returns the position of endpoint A in body local coordinates'''

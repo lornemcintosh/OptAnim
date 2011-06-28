@@ -58,28 +58,9 @@ def num_euler_to_quat(euler):
 def num_quat_to_euler(quat):
     '''Converts a quaternion to 3 euler angles XYZ (YXZ order)'''
     quat = quat.normalize()
-    qw, qx, qy, qz = quat.w, quat.x, quat.y, quat.z
-
-    test = qx * qy + qz * qw
-    if (test > 0.4995): #singularity at north pole
-        x = 0
-        y = 2 * math.atan2(qx, qw)
-        z = math.pi / 2
-        return [x, y, z]
-
-    if (test < -0.4995): #singularity at south pole
-        x = 0
-        y = -2 * math.atan2(qx, qw)
-        z = - math.pi / 2
-        return [x, y, z]
-
-    sqx = qx * qx
-    sqy = qy * qy
-    sqz = qz * qz
-    x = math.atan2(2 * qx * qw-2 * qy * qz, 1 - 2 * sqx - 2 * sqz)
-    y = math.atan2(2 * qy * qw-2 * qx * qz, 1 - 2 * sqy - 2 * sqz)
-    z = math.asin(2 * test)
-    return [x, y, z]
+    mat = quat.toMat3()
+    euler = mat.toEulerYXZ() #YXZ order
+    return list(euler)
 
 def sym_euler_to_matrix(euler):
     '''(symbolic!) Converts 3 euler angles XYZ to a rotation matrix (YXZ order)'''
@@ -132,7 +113,21 @@ def sym_world_xf(point, coords, worldToLocal=False):
 	euler = coords[3:]
 	rot = sym_euler_to_matrix(euler)
 	return (rot * p) + trans	#local to world
-    
+
+def num_world_xf(point, coords, worldToLocal=False):
+    '''Transforms a point from local to world coordinates. This gives the same
+    result as sym_world_xf, but is numerical (and thus much faster).'''
+    quat = num_euler_to_quat(coords[3:dof])
+    trans = cgtypes.vec3(coords[:3])
+    p = cgtypes.vec3(point)
+
+    ret = None
+    if worldToLocal:
+        quat = quat.inverse()
+        ret = quat.rotateVec(p - trans) #world to local
+    else:
+        ret = quat.rotateVec(p) + trans #local to world
+    return [ret.x, ret.y, ret.z]
 
 def openfile(filepath, arg):
     '''opens a file and creates the directory if necessary'''

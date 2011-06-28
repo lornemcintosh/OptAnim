@@ -122,7 +122,7 @@ class Animation(object):
         self.CachedObjectiveList = []
 
     def __str__(self):
-        return self.Name
+        return self.Name + " (Length=" + str(self.Length) + ", FPS=" + str(self.FPS) + ", frame_count=" + str(self.get_frame_count()) + ")"
 
     def get_frame_length(self):
 	return float(1.0 / self.FPS)
@@ -148,10 +148,9 @@ class Animation(object):
 
     def get_frame_slice(self, firstFrame, lastFrame):
         '''Returns a new Animation containing just the frames between firstFrame and lastFrame'''
-        #take a 1 extra frame on each side
-        firstFrame -= 1
+
+        #clamp frames
         firstFrame = max(0, firstFrame)
-        lastFrame += 1
         lastFrame = min(self.get_frame_count(), lastFrame)
 
         newName = self.Name + "_" + str(firstFrame) + "to" + str(lastFrame)
@@ -185,13 +184,13 @@ class Animation(object):
         #do the resampling
         for frame in range(frameCount):
             time = frame / (frameCount-1)
-            interpData = self.animdata_get_interpolated(time)
+            interpData = self.animdata_get_interpolated(time, self.Character.DefaultRoot)
             for body in ret.Character.BodyList:
                 ret.AnimationData[str(body.Name)][frame] = interpData[body.Name][0]
 
         return ret
 
-    def animdata_get_interpolated(self, time):
+    def animdata_get_interpolated(self, time, root):
         '''Returns the interpolated state at time, where time is 0 to 1'''
         assert(0.0 <= time <= 1.0)
 
@@ -199,30 +198,34 @@ class Animation(object):
         frameA = int(math.floor(time * nframes))
         frameB = int(math.ceil(time * nframes))
 
-        ret = copy.deepcopy(self.AnimationData)
         if frameA == frameB:
-            for k, v in ret.items():
-                ret[k] = ret[k][frameA:frameB + 1]
-            #print str(time)+", "+str(frameA)+" == "+str(frameB)+", "+str(ret["C_torso"])
+            ret = {}
+            for k, v in self.AnimationData.items():
+                ret[k] = self.AnimationData[k][frameA:frameB + 1]
             return ret
+
         else:
             timeA = frameA / nframes
             timeB = frameB / nframes
             timeAB = (time - timeA) / (timeB - timeA)
-            for k, v in ret.items():
-                dataA = ret[k][frameA]
-                dataB = ret[k][frameB]
-                ret[k] = [num_q_lerp(dataA, dataB, timeAB)]
-            #print str(time)+", "+str(frameA)+" != "+str(frameB)+", timeAB="+str(timeAB)+", "+str(ret["C_torso"])
+            
+            a,b = {},{}
+            for k, v in self.AnimationData.items():
+                a[k] = self.AnimationData[k][frameA:frameA + 1]
+                b[k] = self.AnimationData[k][frameB:frameB + 1]
+            ret = frame_interpolate(self.Character, root, a, b, timeAB)
             return ret
 
-    def blend(self, other, weight, fps=25):
-        print "Blending " + str(self.Name) + " and " + str(other.Name) + ". Weight = " + str(weight)
+    def blend(self, other, weight, root=None, fps=25):
+        if root is None:
+            root = self.Character.DefaultRoot
+
+        print "Blending " + str(self) + " and " + str(other) + ". Weight = " + str(weight) + ". Root = " + str(root.Name)
 
         #calculate length (in seconds) of new animation clip:
         #(formula from Safonova & Hodgins / Analyzing the Physical Correctness of Interpolated Human Motion)
         length = math.sqrt(math.pow(self.Length,2)*weight + math.pow(other.Length,2)*(1-weight))
-        
+
         ret = Animation(str(self.Name) + "_and_" + str(other.Name), length, fps, self.Character, None, None)
 
         frameCount = ret.get_frame_count()
@@ -232,10 +235,12 @@ class Animation(object):
 
         for frame in range(frameCount):
             frameTime = frame / (frameCount-1)
-            a = self.animdata_get_interpolated(frameTime)
-            b = other.animdata_get_interpolated(frameTime)
+            a = self.animdata_get_interpolated(frameTime, root)
+            b = other.animdata_get_interpolated(frameTime, root)
+            tmp = frame_interpolate(self.Character, root, a, b, weight)
+
             for body in ret.Character.BodyList:
-                ret.AnimationData[str(body.Name)][frame] = num_q_lerp(a[str(body.Name)][0], b[str(body.Name)][0], weight)
+                ret.AnimationData[str(body.Name)][frame] = tmp[str(body.Name)][0]
         
         ret.Done = True
         ret.Solved = True
@@ -334,7 +339,7 @@ class Animation(object):
             #if looped, append an extra frame (identical to first frame, but offset)
 	    for s in self.SpecifierList:
 		if isinstance(s, SpecifierPluginLoop):
-                    for frame in range(0, 1):   #duplicate first 1 frame
+                    for frame in range(0, 2):   #duplicate first 2 frames
                         for b in self.Character.BodyList:
                             q = self.AnimationData[str(b.Name)][frame]
                             q = s.get_offset(q, 1) #apply offset
@@ -352,24 +357,22 @@ class Animation(object):
         if self.Solved is False:
             raise BaseException('Animation is not solved. Cannot export!')
 
-        filename = outdir + "\\" + self.Name + '.bvh'
+        '''filename = outdir + "\\" + self.Name + '.bvh'
         print('Writing: %s,' % filename),
         file = openfile(filename, 'w')
         file.write(export_bvh(self))
         file.close()
 
-        '''
         filename = outdir + "\\" + self.Name + '.flat.bvh'
         print('%s,' % filename),
         file = openfile(filename, 'w')
         file.write(export_bvh_flat(self))
-        file.close()
-        '''
+        file.close()'''
 
         filename = outdir + "\\" + self.Name + '.skeleton.xml'
         print('%s' % filename)
         file = openfile(filename, 'w')
-        file.write(export_ogre_skeleton_xml(self))
+        file.write(export_ogre_skeleton_xml(self, self.Character.DefaultRoot))
         file.close()
 
     def _solve(self, solver, writeAMPL=False):
@@ -495,3 +498,64 @@ class Animation(object):
 	else:
 	    print("CMA-ES optimization unnecessary for %s. Solving..." % self.Name)
 	    return self._solve(solver, writeAMPL=True)
+
+
+def frame_interpolate(character, root, frameDataA, frameDataB, weight):
+    '''Given a character, a root body, two frames of animation data, and a
+    weight, this returns an interpolated frame of animation data'''
+    assert(0.0 <= weight <= 1.0)
+
+    #setup new animation data structure
+    ret = {}
+    for body in character.BodyList:
+        ret[str(body.Name)] = [None]
+
+    #traverse character, starting at root
+    for parent,child,joint in character.dfs(root):
+        if parent is None:
+            #special case: this is the root body
+            #just do a straight-forward lerp for position and rotation
+            dataA = frameDataA[str(child.Name)][0]
+            dataB = frameDataB[str(child.Name)][0]
+            lerpData = num_q_lerp(dataA, dataB, weight)
+            ret[str(child.Name)] = [lerpData]
+        else:
+            #regular case: child rotation must be handled relative to parent
+            #frameA
+            parentDataA, childDataA = frameDataA[str(parent.Name)][0], frameDataA[str(child.Name)][0]
+            parentEulerA, childEulerA = parentDataA[3:dof], childDataA[3:dof]
+            parentQuatA, childQuatA = num_euler_to_quat(parentEulerA), num_euler_to_quat(childEulerA)
+            #express child relative to parent
+            relativeQuatA = parentQuatA.inverse() * childQuatA
+
+            #frameB
+            parentDataB, childDataB = frameDataB[str(parent.Name)][0], frameDataB[str(child.Name)][0]
+            parentEulerB, childEulerB = parentDataB[3:dof], childDataB[3:dof]
+            parentQuatB, childQuatB = num_euler_to_quat(parentEulerB), num_euler_to_quat(childEulerB)
+            #express child relative to parent
+            relativeQuatB = parentQuatB.inverse() * childQuatB
+
+            #do the interpolation
+            newChildQuat = cgtypes.slerp(weight, relativeQuatA, relativeQuatB)
+
+            #undo relative transform
+            newParentData = ret[str(parent.Name)][0]
+            newParentEuler = newParentData[3:dof]
+            newParentQuat = num_euler_to_quat(newParentEuler)
+            newChildQuat = newParentQuat * newChildQuat
+            newChildEuler = num_quat_to_euler(newChildQuat)
+
+            #now calculate the position
+            pjp, cjp = [], []
+            if joint.BodyA is parent and joint.BodyB is child:
+                pjp, cjp = joint.PointA, joint.PointB
+            elif joint.BodyA is child and joint.BodyB is parent:
+                pjp, cjp = joint.PointB, joint.PointA
+            else:
+                raise BaseException("Output from character.dfs() makes no sense")
+            jointPosWorld = num_world_xf(pjp, newParentData)
+            jointPosWorld = map(float, jointPosWorld)
+            newChildPos = cgtypes.vec3(jointPosWorld) - newChildQuat.rotateVec(cgtypes.vec3(cjp))
+
+            ret[str(child.Name)] = [[newChildPos.x, newChildPos.y, newChildPos.z] + newChildEuler]
+    return ret

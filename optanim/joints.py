@@ -10,10 +10,12 @@ class Joint(object):
 	self.f = []
 
     #constraints enforced by joint forces
-    def get_state_constraints(self): abstract
+    def get_state_constraints(self):
+        raise NotImplementedError("You must override this method")
 
     #constraints on the joint forces themselves
-    def get_force_constraints(self): abstract
+    def get_force_constraints(self):
+        raise NotImplementedError("You must override this method")
 
 
 class JointRevolute(Joint):
@@ -22,8 +24,8 @@ class JointRevolute(Joint):
     def __init__(self, Name, BodyA, PointA, BodyB, PointB, RotationLimits, TorqueLimit):
 	'''Constructor'''
 	Joint.__init__(self, Name)
-	self.BodyA = BodyA  #toward root
-	self.BodyB = BodyB  #away from root toward a leaf
+	self.BodyA = BodyA
+	self.BodyB = BodyB
 	self.PointA = PointA
 	self.PointB = PointB
 	self.RotationLimits = RotationLimits

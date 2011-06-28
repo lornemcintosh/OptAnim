@@ -5,23 +5,35 @@ import xml.etree.ElementTree as ET
 from joints import *
 from utils import *
 
-def export_ogre_skeleton_xml(anim):
+def export_ogre_skeleton_xml(anim, root):
     rootoffset = [0.0, 1.37, 0.0] #TODO: HACK: magic number
 
-    root = ET.Element("skeleton")
-    bones = ET.SubElement(root, "bones")
-    for i, body in enumerate(anim.Character.BodyList):
+    docRoot = ET.Element("skeleton")
+    bones = ET.SubElement(docRoot, "bones")
+
+    #traverse character, starting at root
+    for parent,child,joint in anim.Character.dfs(root):
 	bone = ET.SubElement(bones, "bone")
-	bone.set("id", str(body.Id))
-	bone.set("name", str(body.Name))
+	bone.set("id", str(child.Id))
+	bone.set("name", str(child.Name))
 
 	position = ET.SubElement(bone, "position")
-	if i == 0:
+	if parent is None:
+            #special case: this is the root body
 	    position.set("x", "%.9f" % rootoffset[0])
 	    position.set("y", "%.9f" % rootoffset[1])
 	    position.set("z", "%.9f" % rootoffset[2])
 	else:
-	    offset = [ body.ParentJoint.PointA[i] - body.Parent.ep_a()[i] for i in range(len(body.Parent.ep_a()))]
+            #regular case:
+            pjp, cjp = [], []  #parent joint point, child joint point
+            if joint.BodyA is parent and joint.BodyB is child:
+                pjp, cjp = joint.PointA, joint.PointB
+            elif joint.BodyA is child and joint.BodyB is parent:
+                pjp, cjp = joint.PointB, joint.PointA
+            else:
+                raise BaseException("Output from character.dfs() makes no sense")
+
+	    offset = [ pjp[i] - parent.ep_a()[i] for i in range(len(parent.ep_a()))]
 	    position.set("x", "%.9f" % offset[0])
 	    position.set("y", "%.9f" % offset[1])
 	    position.set("z", "%.9f" % offset[2])
@@ -33,34 +45,34 @@ def export_ogre_skeleton_xml(anim):
 	axis.set("y", "%.9f" % 0.0)
 	axis.set("z", "%.9f" % 0.0)
 
-    bonehierarchy = ET.SubElement(root, "bonehierarchy")
-    for i, joint in enumerate(anim.Character.JointList):
-	if isinstance(joint, JointRevolute):
-	    boneparent = ET.SubElement(bonehierarchy, "boneparent")
-	    boneparent.set("bone", str(joint.BodyB.Name))
-	    boneparent.set("parent", str(joint.BodyA.Name))
+    bonehierarchy = ET.SubElement(docRoot, "bonehierarchy")
+    for parent,child,joint in anim.Character.dfs(root):
+        if parent is not None:
+            boneparent = ET.SubElement(bonehierarchy, "boneparent")
+            boneparent.set("bone", str(child.Name))
+            boneparent.set("parent", str(parent.Name))
 
-    animations = ET.SubElement(root, "animations")
+    animations = ET.SubElement(docRoot, "animations")
     animation = ET.SubElement(animations, "animation")
     animation.set("name", str(anim.Name))
     length = (len(anim.AnimationData.items()[0][1])-1) * anim.get_frame_length()
     animation.set("length", str(length))
     tracks = ET.SubElement(animation, "tracks")
 
-    for i, body in enumerate(anim.Character.BodyList):
+    for parent,child,joint in anim.Character.dfs(root):
 	track = ET.SubElement(tracks, "track")
-	track.set("bone", str(body.Name))
+	track.set("bone", str(child.Name))
 	keyframes = ET.SubElement(track, "keyframes")
-	#for frame in range(anim.get_frame_count()):
 	for frame in range(len(anim.AnimationData.items()[0][1])):
 	    keyframe = ET.SubElement(keyframes, "keyframe")
 	    keyframe.set("time", str(frame * anim.get_frame_length()))
 
 	    bonepos = []
-	    if i == 0:
+	    if parent is None:
+                #special case: this is the root body
 		#get position of root
-		q = anim.AnimationData[str(body.Name)][frame]
-		bonepos = sym_world_xf(body.ep_a(), q)
+		q = anim.AnimationData[str(child.Name)][frame]
+		bonepos = num_world_xf(child.ep_a(), q) #TODO: ep_a or b?
 		#in ogre, the root translation seems to be expressed relative to
 		#its "root pose" specified above, so here we subtract it out
 		bonepos[0] = bonepos[0] - rootoffset[0]
@@ -74,25 +86,26 @@ def export_ogre_skeleton_xml(anim):
 	    translate.set("z", "%.9f" % bonepos[2])
 
 	    axisangle = [0.0]*4
-	    if i == 0:
-		rootEuler = anim.AnimationData[str(body.Name)][frame][3:dof]
-		#convert to axis angle... by way of a quat :)
+	    if parent is None:
+                #special case: this is the root body
+		rootEuler = anim.AnimationData[str(child.Name)][frame][3:dof]
+		#convert to axis angle
 		quat = num_euler_to_quat(rootEuler)
-                tmp = quat.toAngleAxis()
-		axisangle = [tmp[1].x, tmp[1].y, tmp[1].z, tmp[0]]
+                aa = quat.toAngleAxis()
+		axisangle = [aa[1].x, aa[1].y, aa[1].z, aa[0]]
 	    else:
-		childEuler = anim.AnimationData[str(body.Name)][frame][3:dof]
+		childEuler = anim.AnimationData[str(child.Name)][frame][3:dof]
 		childQuat = num_euler_to_quat(childEuler)
 
-		parentEuler = anim.AnimationData[str(body.Parent.Name)][frame][3:dof]
+		parentEuler = anim.AnimationData[str(parent.Name)][frame][3:dof]
 		parentQuat = num_euler_to_quat(parentEuler)
 
 		#express child relative to parent
                 relativeQuat = parentQuat.inverse() * childQuat
 
 		#convert to axis angle
-                tmp = relativeQuat.toAngleAxis()
-		axisangle = [tmp[1].x, tmp[1].y, tmp[1].z, tmp[0]]
+                aa = relativeQuat.toAngleAxis()
+		axisangle = [aa[1].x, aa[1].y, aa[1].z, aa[0]]
 
 	    rotate = ET.SubElement(keyframe, "rotate")
 	    rotate.set("angle", "%.9f" % axisangle[3])
@@ -102,7 +115,7 @@ def export_ogre_skeleton_xml(anim):
 	    axis.set("z", "%.9f" % axisangle[2])
 
     #TODO: HACK: oh the lengths I'll go to for some pretty printing
-    rough_string = ET.tostring(root, 'utf-8')
+    rough_string = ET.tostring(docRoot, 'utf-8')
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml()
 
@@ -143,7 +156,7 @@ def _get_bvh_motion(character, body, level, frame, data):
     #special case for root
     if level == 0:
 	q = data[str(body.Name)][frame]
-	pos = sym_world_xf(body.ep_a(), q)
+	pos = num_world_xf(body.ep_a(), q)
 	pos = map(float, pos)	#evaluate sympy expression to a float
 	ret += '{: .9f} {: .9f} {: .9f} '.format(*pos)
 
@@ -245,7 +258,7 @@ def export_bvh_flat(anim):
 	ret += '%f %f %f %f %f %f ' % (0, 0, 0, 0, 0, 0) #root doesn't move
 	for body in anim.Character.BodyList:
 	    q = anim.AnimationData[str(body.Name)][frame]
-	    qtx, qty, qtz = sym_world_xf(body.ep_a(), q)
+	    qtx, qty, qtz = num_world_xf(body.ep_a(), q)
 	    qrx, qry, qrz = [x * (180.0 / math.pi) for x in anim.AnimationData[str(body.Name)][frame][3:dof]]
 	    ret += ''.join(('%f ' % x) for x in [qtx, qty, qtz])
 	    ret += ''.join(('%f ' % x) for x in [qry, qrx, qrz])    #YXZ

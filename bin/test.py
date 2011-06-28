@@ -10,6 +10,7 @@ import operator
 
 def main():
     #bodies/joints are defined in character space:
+    #right-handed coordinate system
     #x+- is character front, back (ventral, dorsal)
     #y+- is character up, down (cranial, caudal)
     #z+- is character right, left (lateral, lateral)
@@ -64,6 +65,7 @@ def main():
     joint_foot_right = JointContact("R_foot", calf_right, calf_right.ep_b(), Friction=0.5)
     char_mortimer.add_joint(joint_foot_right)
 
+    char_mortimer.set_default_root(torso)
 
     #===========================================================================
     # General character preferences (for all animations)
@@ -253,7 +255,7 @@ def main():
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
 
     anim_walk.add_character(char_mortimer)
-    anim_walk.generate()
+    #anim_walk.generate()
 
 
     #===========================================================================
@@ -311,7 +313,7 @@ def main():
         (joint_elbow_left.get_angle_expr(t)[2]+1.9)**2 + (joint_elbow_right.get_angle_expr(t)[2]+1.9)**2, 400.0))
 
     anim_run.add_character(char_mortimer)
-    anim_run.generate()
+    #anim_run.generate()
     
     #wait for them all to solve
     anim_idle.wait_for_results()
@@ -319,7 +321,6 @@ def main():
     anim_walk.wait_for_results()
     anim_run.wait_for_results()
 
-    '''
     animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
     finalAnimList = []
     for anim in animList:
@@ -327,27 +328,25 @@ def main():
         if anim.Solved and anim.ObjectiveValue < 240:
             finalAnimList.append(anim)
 
-    blendedAnim = finalAnimList[0].blend(finalAnimList[1], 0.5)
-    blendedAnim.export('.\\blended')
+    #blendedAnim = finalAnimList[1].blend(finalAnimList[2], 0.5, fps=20)
+    #blendedAnim.export('.\\blended')
 
-    for anim in finalAnimList:
-        anim = anim.animdata_resample(60) #upsample to 60 fps
-        anim.export('.\\anims')
+    #for anim in finalAnimList:
+        #anim = anim.animdata_resample(60) #upsample to 60 fps
+        #anim.export('.\\anims')
 
     for anim in finalAnimList:
             print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
 
     for anim in finalAnimList:
             print "\""+anim.Name+"\","
-    '''
 
 
     #experiment to see if we can blend them:
-    #=================================================
-    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
+    #=================================================   
     slicedAnimList = [[] for i in range(2**2)]  #TODO: fix this for other characters
 
-    for anim in animList:
+    for anim in finalAnimList:
 
         #discard the poor ones
         if anim.ObjectiveValue > 240:
@@ -371,40 +370,43 @@ def main():
 
         for i, contactType in enumerate(frameSetList):
             for j, f in enumerate(contactType):
-                newanim = anim.get_frame_slice(f[0], f[len(f)-1])
+                newanim = anim.get_frame_slice(f[0], f[len(f)-1]+1)
                 newanim.Name = str(i) + "_" + newanim.Name
                 slicedAnimList[i].append(newanim)
 
     for i, contactType in enumerate(slicedAnimList):
         print "Contact type " + str(i) + " has " + str(len(contactType)) + " clips."
 
-    for i in slicedAnimList:
-        for anim in i:
-            anim.export('.\\blended')
+    flatSlicedAnimList = [item for sublist in slicedAnimList for item in sublist]
 
-    for i in slicedAnimList:
-        for anim in i:
-            print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
-
-    for i in slicedAnimList:
-        for anim in i:
-            print "\""+anim.Name+"\","
-
-    #now blend them, 2 at a time
+    #now blend them together, 2 at a time with several weights
+    weightList = [0.25, 0.5, 0.75]
     blendedAnimList = []
-    for i in slicedAnimList:
-        for x in itertools.combinations(i, 2):
-            newanim = x[0].blend(x[1], 0.5)
-            newanim.Name = x[0].Name + "_blend0.5_" + x[1].Name
-            blendedAnimList.append(newanim)
+    for i, anim in enumerate(slicedAnimList):
+        rootbody = None
+        #choose the root body based on which foot is in contact
+        if i is 0:
+            rootbody = torso        #flight
+        elif i is 1:
+            rootbody = calf_left    #right foot contact
+        elif i is 2:
+            rootbody = calf_right   #left foot contact
+        elif i is 3:
+            rootbody = calf_left    #double support (just pick one arbitrarily)
 
-    for anim in blendedAnimList:
+        for x in itertools.combinations(anim, 2):   #2 at a time
+            for weight in weightList:
+                newanim = x[0].blend(x[1], weight, rootbody)
+                newanim.Name = x[0].Name + "_blend"+str(weight)+"_" + x[1].Name
+                blendedAnimList.append(newanim)
+
+    for anim in flatSlicedAnimList+blendedAnimList:
         anim.export('.\\blended')
 
-    for anim in blendedAnimList:
+    for anim in flatSlicedAnimList+blendedAnimList:
         print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
 
-    for anim in blendedAnimList:
+    for anim in flatSlicedAnimList+blendedAnimList:
         print "\""+anim.Name+"\","
     #=================================================
 
@@ -579,9 +581,7 @@ if __name__ == '__main__':
 
     main()
 
-    '''
-    import cProfile, pstats
+    '''import cProfile, pstats
     cProfile.run('main()', 'main.profile')
     p = pstats.Stats('main.profile')
-    p.sort_stats('cumulative').print_stats(30)
-    '''
+    p.sort_stats('cumulative').print_stats(30)'''

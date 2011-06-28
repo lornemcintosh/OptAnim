@@ -1,6 +1,7 @@
 from __future__ import division
 import math
 import sympy
+import collections
 
 from specifier import *
 from joints import *
@@ -14,19 +15,58 @@ class Character(object):
 	self.BodyList = []
 	self.JointList = []
         self.SpecifierList = []
+        self.DefaultRoot = None #this body will be used as the root by default
+
+    def dfs(self, root):
+        '''Perform a depth-first traversal of this character's bodies starting from root, yielding parent/child/joint pairs'''
+        if root not in self.BodyList:
+            raise BaseException("Character does not contain the specified root body!")
+        
+        stack, enqueued = [(None, root)], set([root])
+        while stack:
+            parent, n = stack.pop()
+            yield parent, n, self.get_joint_connecting_bodies(parent, n)
+            new = set(self.get_bodies_connected_to_body(n)) - enqueued
+            enqueued |= new
+            stack.extend([(n, child) for child in new])
+
+    def get_joint_connecting_bodies(self, bodyA, bodyB):
+        ret = []
+        for joint in self.JointList:
+            if not isinstance(joint, JointRevolute):
+                continue
+            elif((joint.BodyA == bodyA and joint.BodyB == bodyB) or \
+                (joint.BodyA == bodyB and joint.BodyB == bodyA)):
+                ret.append(joint)
+        if len(ret) > 1:
+            raise BaseException("Character has 2 joints connecting " + bodyA.Name + " and " + bodyB.Name + " together. We can't handle that.")
+        elif len(ret) < 1:
+            return None
+        else:
+            return ret[0]
+
+    def get_bodies_connected_to_body(self, body):
+        ret = []
+        for joint in self.JointList:
+            if not isinstance(joint, JointRevolute):
+                continue
+            elif(joint.BodyA == body):
+                ret.append(joint.BodyB)
+            elif(joint.BodyB == body):
+                ret.append(joint.BodyA)
+        return ret
+
+    def set_default_root(self, body):
+        if body in self.BodyList:
+            self.DefaultRoot = body
+        else:
+            raise BaseException("The specified body is not part of this character!")
 
     def add_body(self, body):
 	self.BodyList.append(body)
 
     def add_joint(self, joint):
 	self.JointList.append(joint)
-	#for convenience add some links to parent/child bodies and joints
-	#this assumes bodyA is "up" to the root; this must be considered when creating joints
-	if isinstance(joint, JointRevolute):
-	    joint.BodyA.add_child(joint.BodyB)
-	    joint.BodyB.set_parent(joint.BodyA)
-	    joint.BodyA.add_child_joint(joint)
-	    joint.BodyB.set_parent_joint(joint)
 
     def add_specifier(self, specifier):
         '''Adds a specifier to the character. These specifiers will

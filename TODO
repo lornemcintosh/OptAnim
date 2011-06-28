@@ -4,3 +4,4 @@ OptAnim, Copyright (c) 2011 Lorne McIntosh
 - More realistic modeling of joints/muscles
 - Add system for making transition animations (between frames of regular animations)
 - Fix CMA-ES for contact optimization (or eliminate the need for it by reformulating the spacetime problem)
+- Fix BVH export
