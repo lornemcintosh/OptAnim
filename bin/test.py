@@ -255,7 +255,7 @@ def main():
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
 
     anim_walk.add_character(char_mortimer)
-    #anim_walk.generate()
+    anim_walk.generate()
 
 
     #===========================================================================
@@ -335,11 +335,11 @@ def main():
         #anim = anim.animdata_resample(60) #upsample to 60 fps
         #anim.export('.\\anims')
 
-    for anim in finalAnimList:
-            print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
+    #for anim in finalAnimList:
+            #print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
 
-    for anim in finalAnimList:
-            print "\""+anim.Name+"\","
+    #for anim in finalAnimList:
+            #print "\""+anim.Name+"\","
 
 
     #experiment to see if we can blend them:
@@ -377,12 +377,16 @@ def main():
     for i, contactType in enumerate(slicedAnimList):
         print "Contact type " + str(i) + " has " + str(len(contactType)) + " clips."
 
-    flatSlicedAnimList = [item for sublist in slicedAnimList for item in sublist]
+    #flatSlicedAnimList = [item for sublist in slicedAnimList for item in sublist]
 
     #now blend them together, 2 at a time with several weights
     weightList = [0.25, 0.5, 0.75]
     blendedAnimList = []
     for i, anim in enumerate(slicedAnimList):
+        #try it without double support blending
+        if i is 3:
+            continue
+            
         rootbody = None
         #choose the root body based on which foot is in contact
         if i is 0:
@@ -397,24 +401,19 @@ def main():
         for x in itertools.combinations(anim, 2):   #2 at a time
             for weight in weightList:
                 newanim = x[0].blend(x[1], weight, rootbody)
-                newanim.Name = x[0].Name + "_blend"+str(weight)+"_" + x[1].Name
+                newanim.Name = "Blend"+str(weight)+ "_" + x[0].Name + "&" + x[1].Name
                 blendedAnimList.append(newanim)
 
-    for anim in flatSlicedAnimList+blendedAnimList:
-        anim.export('.\\blended')
-
-    for anim in flatSlicedAnimList+blendedAnimList:
-        print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
-
-    for anim in flatSlicedAnimList+blendedAnimList:
+    #export that bad boy
+    filename = ".\\output" + "\\" + char_mortimer.Name + '.skeleton.xml'
+    print('Writing %s' % filename)
+    file = openfile(filename, 'w')
+    file.write(ogre3d_export_animations(finalAnimList+blendedAnimList))
+    file.close()
+    
+    for anim in finalAnimList+blendedAnimList:
         print "\""+anim.Name+"\","
     #=================================================
-
-    #export the original animations
-    #anim_idle.export('.')
-    #anim_startstop.export('.')
-    #anim_walk.export('.')
-    #anim_run.export('.')
 
     print("All done!")
     return

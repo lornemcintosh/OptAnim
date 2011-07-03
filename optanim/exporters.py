@@ -5,14 +5,41 @@ import xml.etree.ElementTree as ET
 from joints import *
 from utils import *
 
-def export_ogre_skeleton_xml(anim, root):
-    rootoffset = [0.0, 1.37, 0.0] #TODO: HACK: magic number
+def ogre3d_export_animation(anim, root=None):
+    '''Convenience method: exports a single animation to an ogre3d skeleton.xml file.'''
+    return ogre3d_export_animations([anim], root)
+
+def ogre3d_export_animations(animList, root=None):
+    '''Exports a list of animations to a single ogre3d skeleton.xml file.'''
+    character = animList[0].Character
+
+    if root is None:
+        root = character.DefaultRoot
 
     docRoot = ET.Element("skeleton")
-    bones = ET.SubElement(docRoot, "bones")
+    docRoot.append(ogre3d_get_bones_element(character, root))
+    docRoot.append(ogre3d_get_bonehierarchy_element(character, root))
+    animations = ET.SubElement(docRoot, "animations")
+
+    for anim in animList:
+        if anim.Character is not character:
+            raise BaseException("All animations must have the same character")
+        animations.append(ogre3d_get_animation_element(anim, root))
+
+    return ET.tostring(docRoot, 'utf-8')
+
+    #TODO: this was causing memory errors. We need a better method for pretty printing
+    #ugly_string = ET.tostring(docRoot, 'utf-8')
+    #reparsed = minidom.parseString(ugly_string)
+    #return reparsed.toprettyxml()
+
+def ogre3d_get_bones_element(character, root):
+    rootoffset = [0.0, 1.37, 0.0] #TODO: HACK: magic number
+
+    bones = ET.Element("bones")
 
     #traverse character, starting at root
-    for parent,child,joint in anim.Character.dfs(root):
+    for parent,child,joint in character.dfs(root):
 	bone = ET.SubElement(bones, "bone")
 	bone.set("id", str(child.Id))
 	bone.set("name", str(child.Name))
@@ -44,16 +71,21 @@ def export_ogre_skeleton_xml(anim, root):
 	axis.set("x", "%.9f" % 1.0)
 	axis.set("y", "%.9f" % 0.0)
 	axis.set("z", "%.9f" % 0.0)
+    return bones
 
-    bonehierarchy = ET.SubElement(docRoot, "bonehierarchy")
-    for parent,child,joint in anim.Character.dfs(root):
+def ogre3d_get_bonehierarchy_element(character, root):
+    bonehierarchy = ET.Element("bonehierarchy")
+    for parent,child,joint in character.dfs(root):
         if parent is not None:
             boneparent = ET.SubElement(bonehierarchy, "boneparent")
             boneparent.set("bone", str(child.Name))
             boneparent.set("parent", str(parent.Name))
+    return bonehierarchy
 
-    animations = ET.SubElement(docRoot, "animations")
-    animation = ET.SubElement(animations, "animation")
+def ogre3d_get_animation_element(anim, root):
+    rootoffset = [0.0, 1.37, 0.0] #TODO: HACK: magic number
+
+    animation = ET.Element("animation")
     animation.set("name", str(anim.Name))
     length = (len(anim.AnimationData.items()[0][1])-1) * anim.get_frame_length()
     animation.set("length", str(length))
@@ -113,11 +145,7 @@ def export_ogre_skeleton_xml(anim, root):
 	    axis.set("x", "%.9f" % axisangle[0])
 	    axis.set("y", "%.9f" % axisangle[1])
 	    axis.set("z", "%.9f" % axisangle[2])
-
-    #TODO: HACK: oh the lengths I'll go to for some pretty printing
-    rough_string = ET.tostring(docRoot, 'utf-8')
-    reparsed = minidom.parseString(rough_string)
-    return reparsed.toprettyxml()
+    return animation
 
 def _get_bvh_hierarchy(character, root, level, rootoffset):
     ret = ''

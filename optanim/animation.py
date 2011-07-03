@@ -370,9 +370,9 @@ class Animation(object):
         file.close()'''
 
         filename = outdir + "\\" + self.Name + '.skeleton.xml'
-        print('%s' % filename)
+        print('Writing %s' % filename)
         file = openfile(filename, 'w')
-        file.write(export_ogre_skeleton_xml(self, self.Character.DefaultRoot))
+        file.write(ogre3d_export_animation(self))
         file.close()
 
     def _solve(self, solver, writeAMPL=False):
