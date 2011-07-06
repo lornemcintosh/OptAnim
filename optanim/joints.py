@@ -3,6 +3,9 @@ from __future__ import division
 from specifier import *
 from utils import *
 
+import logging
+LOG = logging.getLogger(__name__)
+
 class Joint(object):
     '''Base class for joints'''
     def __init__(self, Name):
@@ -39,7 +42,7 @@ class JointRevolute(Joint):
 	    sympy.Symbol(Name + "_fry"),
 	    sympy.Symbol(Name + "_frz")]
 
-	print 'new ' + str(self)
+	LOG.debug('new ' + str(self))
 	
     def __str__(self):
 	return 'JointRevolute "' + self.Name + '": connects ' + str(self.BodyA.Name) + \
@@ -136,7 +139,7 @@ class JointContact(Joint):
 	    
 	    sympy.Symbol(Name + "_fry")] #rotational
 
-	print 'new ' + str(self)
+	LOG.debug('new ' + str(self))
     
     def __str__(self):
 	return 'JointContact "' + self.Name + '": connects ' + str(self.Body.Name) + ' at ' + str(self.Point) + ' to ground plane'

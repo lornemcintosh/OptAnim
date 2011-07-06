@@ -27,6 +27,7 @@ regex_float = "([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)"
 
 
 def num_q_lerp(qA, qB, weight):
+    assert(True not in [(math.isnan(x) or math.isinf(x)) for x in qA+qB])
     eulerA, eulerB = qA[3:dof], qB[3:dof]
     quatA, quatB = num_euler_to_quat(eulerA), num_euler_to_quat(eulerB)
     posA, posB = qA[:3], qB[:3]
@@ -49,6 +50,7 @@ def vec3_lerp(v1, v2, weight):
 
 def num_euler_to_quat(euler):
     '''Converts 3 euler angles XYZ to a quaternion (YXZ order)'''
+    assert(True not in [(math.isnan(x) or math.isinf(x)) for x in euler])
     rx, ry, rz = euler
     q_xrot = cgtypes.quat().fromAngleAxis(rx, [1, 0, 0])
     q_yrot = cgtypes.quat().fromAngleAxis(ry, [0, 1, 0])
@@ -57,6 +59,7 @@ def num_euler_to_quat(euler):
 
 def num_quat_to_euler(quat):
     '''Converts a quaternion to 3 euler angles XYZ (YXZ order)'''
+    assert(True not in [(math.isnan(x) or math.isinf(x)) for x in [quat.x, quat.y, quat.z, quat.w]])
     quat = quat.normalize()
     mat = quat.toMat3()
     euler = mat.toEulerYXZ() #YXZ order
@@ -117,6 +120,8 @@ def sym_world_xf(point, coords, worldToLocal=False):
 def num_world_xf(point, coords, worldToLocal=False):
     '''Transforms a point from local to world coordinates. This gives the same
     result as sym_world_xf, but is numerical (and thus much faster).'''
+    assert(True not in [(math.isnan(x) or math.isinf(x)) for x in point+coords])
+
     quat = num_euler_to_quat(coords[3:dof])
     trans = cgtypes.vec3(coords[:3])
     p = cgtypes.vec3(point)

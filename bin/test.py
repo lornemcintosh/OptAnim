@@ -8,6 +8,9 @@ from optanim.rigidbody import *
 
 import operator
 
+import logging
+LOG = logging.getLogger(__name__)
+
 def main():
     #bodies/joints are defined in character space:
     #right-handed coordinate system
@@ -138,6 +141,48 @@ def main():
 
     anim_idle.add_character(char_mortimer)
     anim_idle.generate()
+
+    #===========================================================================
+    # Jump Animations
+    #===========================================================================
+    anim_jump = AnimationSpec(Name='jump', FPS=20)
+    anim_jump.set_length(1.8)
+    anim_jump.set_contact_times({
+    	joint_foot_left:[(0.65, 0.7)],	#contact starting at x, lasting for y
+    	joint_foot_right:[(0.65, 0.7)]	#contact starting at x, lasting for y
+    })
+
+    anim_jump.add_specifier(SpecifierPluginGroundPlane())
+
+    anim_jump.add_specifier(ConstraintEq("stoppedRX", torso.q[3](0), 0))
+    anim_jump.add_specifier(ConstraintEq("stoppedRY", torso.q[4](0), 0))
+    #anim_jump.add_specifier(ConstraintEq("stoppedRZ", torso.q[5](0), 0))
+
+    anim_jump.add_specifier(ConstraintEq("stoppedX0", torso.q[0](0), 0))
+    anim_jump.add_specifier(ConstraintEq("stoppedZ0", torso.q[2](0), 0))
+
+    '''anim_jump.add_specifier(ConstraintEq("stoppedCLX", calf_left.q[0](0), 0))
+    anim_jump.add_specifier(ConstraintEq("stoppedCRX", calf_right.q[0](0), 0))
+
+    anim_jump.add_specifier(ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0))
+    anim_jump.add_specifier(ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0))
+
+    anim_jump.add_specifier(ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0))
+    anim_jump.add_specifier(ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0))
+
+    anim_jump.add_specifier(ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0))
+    anim_jump.add_specifier(ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0))'''
+
+    anim_jump.add_param_specifier([[SpecifierPluginLoop([x, 0, 0, 0, 0, 0], [0, 0, 0])] for x in [0.0, 0.5]])
+
+    anim_jump.add_specifier(Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+
+    anim_jump.add_specifier(Objective("minimalGroundForce",
+        joint_foot_left.f[1](t)**2 + joint_foot_right.f[1](t)**2, 0.0001))
+
+    anim_jump.add_character(char_mortimer)
+    anim_jump.generate()
 
     #===========================================================================
     # Start / Stop Locomotion
@@ -317,11 +362,12 @@ def main():
     
     #wait for them all to solve
     anim_idle.wait_for_results()
+    anim_jump.wait_for_results()
     anim_startstop.wait_for_results()
     anim_walk.wait_for_results()
     anim_run.wait_for_results()
 
-    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
+    animList = anim_idle.AnimationList + anim_jump.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
     finalAnimList = []
     for anim in animList:
         #discard the poor ones
@@ -375,7 +421,7 @@ def main():
                 slicedAnimList[i].append(newanim)
 
     for i, contactType in enumerate(slicedAnimList):
-        print "Contact type " + str(i) + " has " + str(len(contactType)) + " clips."
+        LOG.debug("Contact type " + str(i) + " has " + str(len(contactType)) + " clips.")
 
     #flatSlicedAnimList = [item for sublist in slicedAnimList for item in sublist]
 
@@ -404,9 +450,14 @@ def main():
                 newanim.Name = "Blend"+str(weight)+ "_" + x[0].Name + "&" + x[1].Name
                 blendedAnimList.append(newanim)
 
-    #export that bad boy
+
+    #export them
+    #for x in finalAnimList+blendedAnimList:
+        #x.export('.\\output\\')
+
+    #also export as one large skeleton.xml file
     filename = ".\\output" + "\\" + char_mortimer.Name + '.skeleton.xml'
-    print('Writing %s' % filename)
+    LOG.info('Writing %s' % filename)
     file = openfile(filename, 'w')
     file.write(ogre3d_export_animations(finalAnimList+blendedAnimList))
     file.close()
@@ -569,14 +620,17 @@ def backup():
         , 0.01))
     anim_dougtest.generate('.', 'ipopt')
 
-    print "Exit"
+    LOG.info("Exit")
     return
 
 #this check is necessary for multiprocessing to work
 if __name__ == '__main__':
     import sys
-    print(sys.argv)
-    print('Running Python '+sys.version)
+    import logging
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s  %(levelname)s  %(message)s")
+
+    LOG.debug(sys.argv)
+    LOG.debug('Running Python '+sys.version)
 
     main()
 

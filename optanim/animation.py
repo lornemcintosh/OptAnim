@@ -14,6 +14,9 @@ from specifier import *
 from threadpool import *
 from utils import *
 
+import logging
+LOG = logging.getLogger(__name__)
+
 pool = ThreadPool()
 
 class AnimationSpec(object):
@@ -61,13 +64,11 @@ class AnimationSpec(object):
 	self.ParamSpecifierList.append(spec)
 
     def generate(self, solver='ipopt'):
-	print "Generating %s..." % self.Name
-
 	#print a helpful message about the number of combinations generated
 	combinations = len(self.CharacterList)
 	for spec in self.ParamSpecifierList:
 	    combinations *= max(len(spec), 1)
-	print "There will be %i combinations" % combinations
+        LOG.info("Generating %s (%i combinations)" % (self.Name, combinations))
 
 	#make an anim for each combination of characters/specifiers
 	for character in self.CharacterList:
@@ -220,7 +221,7 @@ class Animation(object):
         if root is None:
             root = self.Character.DefaultRoot
 
-        print "Blending " + str(self) + " and " + str(other) + ". Weight = " + str(weight) + ". Root = " + str(root.Name)
+        LOG.info("Blending " + str(self) + " and " + str(other) + ". Weight = " + str(weight) + ". Root = " + str(root.Name))
 
         #calculate length (in seconds) of new animation clip:
         #(formula from Safonova & Hodgins / Analyzing the Physical Correctness of Interpolated Human Motion)
@@ -346,31 +347,31 @@ class Animation(object):
                             q = map(float, q)
                             self.AnimationData[str(b.Name)].append(q) #append extra frame
 
-            print('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
+            LOG.info('%s solved! (Objective = %f)' % (self.Name, self.ObjectiveValue))
 
             self.export('.')    #export immediately so we can see the results
 
         else:
-            print('%s failed!' % self.Name)
+            LOG.info('%s failed!' % self.Name)
 
     def export(self, outdir):
         if self.Solved is False:
             raise BaseException('Animation is not solved. Cannot export!')
 
         '''filename = outdir + "\\" + self.Name + '.bvh'
-        print('Writing: %s,' % filename),
+        LOG.info('Writing %s,' % filename),
         file = openfile(filename, 'w')
         file.write(export_bvh(self))
-        file.close()
-
-        filename = outdir + "\\" + self.Name + '.flat.bvh'
-        print('%s,' % filename),
-        file = openfile(filename, 'w')
-        file.write(export_bvh_flat(self))
         file.close()'''
 
+        filename = outdir + "\\" + self.Name + '.flat.bvh'
+        LOG.info('Writing %s,' % filename),
+        file = openfile(filename, 'w')
+        file.write(export_bvh_flat(self))
+        file.close()
+
         filename = outdir + "\\" + self.Name + '.skeleton.xml'
-        print('Writing %s' % filename)
+        LOG.info('Writing %s' % filename)
         file = openfile(filename, 'w')
         file.write(ogre3d_export_animation(self))
         file.close()
@@ -437,7 +438,7 @@ class Animation(object):
 	optContacts = self.ContactTimesDict is None and len(self.Character.get_joints_contact()) > 0
 
 	if optLength or optContacts:
-	    print("Starting CMA-ES optimization for %s..." % self.Name)
+	    LOG.info("Starting CMA-ES optimization for %s..." % self.Name)
 
 	    startPoint = []
 	    lowerBounds = []
@@ -496,7 +497,7 @@ class Animation(object):
 	    return self._solve(solver, writeAMPL=True)
 
 	else:
-	    print("CMA-ES optimization unnecessary for %s. Solving..." % self.Name)
+	    LOG.info("CMA-ES optimization unnecessary for %s. Solving..." % self.Name)
 	    return self._solve(solver, writeAMPL=True)
 
 
@@ -523,6 +524,7 @@ def frame_interpolate(character, root, frameDataA, frameDataB, weight):
             #regular case: child rotation must be handled relative to parent
             #frameA
             parentDataA, childDataA = frameDataA[str(parent.Name)][0], frameDataA[str(child.Name)][0]
+            assert(True not in [(math.isnan(x) or math.isinf(x)) for x in parentDataA+childDataA])
             parentEulerA, childEulerA = parentDataA[3:dof], childDataA[3:dof]
             parentQuatA, childQuatA = num_euler_to_quat(parentEulerA), num_euler_to_quat(childEulerA)
             #express child relative to parent
@@ -530,12 +532,14 @@ def frame_interpolate(character, root, frameDataA, frameDataB, weight):
 
             #frameB
             parentDataB, childDataB = frameDataB[str(parent.Name)][0], frameDataB[str(child.Name)][0]
+            assert(True not in [(math.isnan(x) or math.isinf(x)) for x in parentDataB+childDataB])
             parentEulerB, childEulerB = parentDataB[3:dof], childDataB[3:dof]
             parentQuatB, childQuatB = num_euler_to_quat(parentEulerB), num_euler_to_quat(childEulerB)
             #express child relative to parent
             relativeQuatB = parentQuatB.inverse() * childQuatB
 
             #do the interpolation
+            relativeQuatA,relativeQuatB = relativeQuatA.normalize(), relativeQuatB.normalize()
             newChildQuat = cgtypes.slerp(weight, relativeQuatA, relativeQuatB)
 
             #undo relative transform

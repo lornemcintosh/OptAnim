@@ -4,6 +4,9 @@ import sympy
 from specifier import *
 from utils import *
 
+import logging
+LOG = logging.getLogger(__name__)
+
 class RigidBody(object):
     '''Represents a rigid body.'''
 
@@ -30,7 +33,7 @@ class RigidBody(object):
 	    sympy.Symbol(Name + "_qry"),
 	    sympy.Symbol(Name + "_qrz")]
 
-	print 'new ' + str(self)
+	LOG.debug('new ' + str(self))
 
     def __str__(self):
 	return 'RigidBody "' + self.Name + '": diameter = ' + str(self.Diameter) + ', mass = ' + str(self.Mass)
