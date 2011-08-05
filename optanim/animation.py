@@ -308,12 +308,13 @@ class Animation(object):
                 varstr = ', '.join([str(body.q[x]) + '[' + str(frame) + ']' for x in range(0, dof)])
                 fstr = ', '.join(['%f'] * dof)
                 ret += '\tprintf "' + str(body.Name) + '[' + str(frame) + '] = ' + fstr + '\\n", ' + varstr + ';\n'
-	ret += '}\nexit;\n'
+	ret += '}\n'
+
+        ret += 'if solve_result = "solved" then{ display {j in 1.._nvars} (_varname[j],_var[j]); }\n'
+	ret += 'exit;\n'
 	return ret
 
     def _solvedcallback(self, amplresult):
-        self.Done = True
-
         #cache solution to a file
         file = open(self.Name + '.amplsol', 'w')
         file.write(amplresult)
@@ -353,6 +354,8 @@ class Animation(object):
 
         else:
             LOG.info('%s failed!' % self.Name)
+
+        self.Done = True    #this must come last to avoid a thread sync issue
 
     def export(self, outdir):
         if self.Solved is False:
@@ -540,7 +543,7 @@ def frame_interpolate(character, root, frameDataA, frameDataB, weight):
 
             #do the interpolation
             relativeQuatA,relativeQuatB = relativeQuatA.normalize(), relativeQuatB.normalize()
-            newChildQuat = cgtypes.slerp(weight, relativeQuatA, relativeQuatB)
+            newChildQuat = slerp(weight, relativeQuatA, relativeQuatB)
 
             #undo relative transform
             newParentData = ret[str(parent.Name)][0]

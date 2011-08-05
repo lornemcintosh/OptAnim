@@ -55,7 +55,8 @@ def num_euler_to_quat(euler):
     q_xrot = cgtypes.quat().fromAngleAxis(rx, [1, 0, 0])
     q_yrot = cgtypes.quat().fromAngleAxis(ry, [0, 1, 0])
     q_zrot = cgtypes.quat().fromAngleAxis(rz, [0, 0, 1])
-    return q_yrot * q_xrot * q_zrot #YXZ order
+    q = (q_yrot * q_xrot * q_zrot).normalize() #YXZ order
+    return q
 
 def num_quat_to_euler(quat):
     '''Converts a quaternion to 3 euler angles XYZ (YXZ order)'''
@@ -133,6 +134,34 @@ def num_world_xf(point, coords, worldToLocal=False):
     else:
         ret = quat.rotateVec(p) + trans #local to world
     return [ret.x, ret.y, ret.z]
+
+#TODO: HACK: Because the slerp() from cgkit has a bug
+#(see http://sourceforge.net/tracker/?func=detail&aid=3377718&group_id=50475&atid=459847)
+def slerp(t,q0,q1,shortest=True):
+    neg_q1 = False   #Does q1 have to be negated (so that the shortest path is taken)?
+
+    ca = q0.dot(q1)
+    if (shortest and ca < 0):
+        ca = -ca
+        neg_q1 = True
+
+    if ( (1.0 - ca) > 1e-12):   #TODO: epsilon?
+        #standard case
+        o = math.acos(ca)
+        so = math.sin(o)
+
+        a = math.sin(o*(1.0-t)) / so
+        b = math.sin(o*t) / so
+    else:
+        #quats are very close (or not unit quats), do linear interpolation
+        a = 1.0 - t
+        b = t
+
+    #do the interpolation
+    if (neg_q1):
+        return q0*a - q1*b
+    else:
+        return q0*a + q1*b
 
 def openfile(filepath, arg):
     '''opens a file and creates the directory if necessary'''

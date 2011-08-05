@@ -1,7 +1,11 @@
 OptAnim, Copyright (c) 2011 Lorne McIntosh
 
 - Name animations better. Each parameter should contribute a short string to the final name (ex. Mortimer_locomote_1.4mps_1.0rad_forward.bvh)
-- More realistic modeling of joints/muscles
-- Add system for making transition animations (between frames of regular animations)
-- Fix CMA-ES for contact optimization (or eliminate the need for it by reformulating the spacetime problem)
-- Fix BVH export
+- More realistic biomechanical modeling of joints/muscles
+- Add system for making transition animations using Spacetime Control (see paper: Human Motion Synthesis with Optimization-based Graphs, 2010)
+- Fix CMA-ES for contact optimization, or eliminate the need for it by reformulating the spacetime problem (see paper: Inverse dynamics optimal control for domains with contacts, 2011)
+- Fix BVH export (only "flat hierarchy" is working currently)
+- Eliminate need for AMPL and write .nl files directly?
+- Investigate using PyDy library for writing equations of motion
+- Try a "2-step" optimization to get reasonable initial values (see paper: Human Motion Synthesis with Optimization-based Graphs, 2010)
+- Abstract ground-plane, so it can be sloped or a climbing wall etc. (note these are the same as rotating gravity vector...) What about staircases etc? A library of mathematical surfaces (spheres, ellipsoids etc.) might be nice.

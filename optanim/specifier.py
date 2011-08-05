@@ -31,7 +31,7 @@ class Constraint(Specifier):
     def _sympystr(self, p):
 	#declaration:
 	if(self.TimeRange != ''):
-	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps: ' + self.TimeRange + '}:\n\t';
+	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps: ' + str(self.TimeRange) + '}:\n\t';
 	else:
 	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps}:\n\t';
 

@@ -42,11 +42,11 @@ def main():
 
 
     #define some joints to constrain the bodies together
-    joint_hip_left = JointRevolute("L_hip", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.5, 0.7], [-1.5, 0.1]], 280)
+    joint_hip_left = JointRevolute("L_hip", torso, [0.0, torso.ep_b()[1], -0.1], thigh_left, thigh_left.ep_a(), [[-0.8, 0.4], [-0.6, 0.8], [-1.5, 0.1]], 280)
     char_mortimer.add_joint(joint_hip_left)
     joint_knee_left = JointRevolute("L_knee", thigh_left, thigh_left.ep_b(), calf_left, calf_left.ep_a(), [[0,0], [0,0], [0, 2.8]], 180)
     char_mortimer.add_joint(joint_knee_left)
-    joint_hip_right = JointRevolute("R_hip", torso, [0.0, torso.ep_b()[1], 0.1], thigh_right, thigh_right.ep_a(), [[-0.4, 0.8], [-0.7, 0.5], [-1.5, 0.1]], 280)
+    joint_hip_right = JointRevolute("R_hip", torso, [0.0, torso.ep_b()[1], 0.1], thigh_right, thigh_right.ep_a(), [[-0.4, 0.8], [-0.8, 0.6], [-1.5, 0.1]], 280)
     char_mortimer.add_joint(joint_hip_right)
     joint_knee_right = JointRevolute("R_knee", thigh_right, thigh_right.ep_b(), calf_right, calf_right.ep_a(), [[0,0], [0,0], [0, 2.8]], 180)
     char_mortimer.add_joint(joint_knee_right)
@@ -78,7 +78,6 @@ def main():
 
     #minimize joint angular acceleration (i.e. prefer smooth trajectories)
     char_mortimer.add_specifier(SpecifierPluginMinimalJointAcceleration(0.0025))
-    char_mortimer.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
 
     #minimize rotation of legs on X and Y
     #(people find this orientation more comfortable)
@@ -105,7 +104,7 @@ def main():
     #===========================================================================
     # Idle Animations
     #===========================================================================
-    anim_idle = AnimationSpec(Name='idle', FPS=10)   #low fps is ok, because not much happens
+    anim_idle = AnimationSpec(Name='idle', FPS=8)   #low fps is ok, because not much happens
     anim_idle.set_length(3.0)
     anim_idle.set_contact_times({
     	joint_foot_left:[(0.0, 1.0)],	#contact starting at x, lasting for y
@@ -113,6 +112,8 @@ def main():
     })
 
     anim_idle.add_specifier(SpecifierPluginGroundPlane())
+
+    anim_idle.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
 
     #anim_idle.add_specifier(ConstraintEq("moveALittle", torso.q[4](10), 0.05))
 
@@ -154,6 +155,8 @@ def main():
 
     anim_jump.add_specifier(SpecifierPluginGroundPlane())
 
+    anim_jump.add_specifier(SpecifierPluginMinimalJointVelocity(0.25))
+
     anim_jump.add_specifier(ConstraintEq("stoppedRX", torso.q[3](0), 0))
     anim_jump.add_specifier(ConstraintEq("stoppedRY", torso.q[4](0), 0))
     #anim_jump.add_specifier(ConstraintEq("stoppedRZ", torso.q[5](0), 0))
@@ -173,16 +176,19 @@ def main():
     anim_jump.add_specifier(ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0))
     anim_jump.add_specifier(ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0))'''
 
-    anim_jump.add_param_specifier([[SpecifierPluginLoop([x, 0, 0, 0, 0, 0], [0, 0, 0])] for x in [0.0, 0.5]])
+    anim_jump.add_param_specifier([[SpecifierPluginLoop([x, 0, 0, 0, 0, r], [0, 0, 0])] for x in [0.0,0.3] for r in [0.0,-(2.0*math.pi)/1.8]])
 
     anim_jump.add_specifier(Objective("elbowPreferenceZ",
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
 
-    anim_jump.add_specifier(Objective("minimalGroundForce",
-        joint_foot_left.f[1](t)**2 + joint_foot_right.f[1](t)**2, 0.0001))
+    anim_jump.add_specifier(Constraint("groundForceLimit",
+        c=joint_foot_left.f[1](t)**2+joint_foot_right.f[1](t)**2, ub=(600**2)*2))
+    #anim_jump.add_specifier(Constraint("groundForceLimitRight",
+        #c=joint_foot_right.f[1](t)**2, ub=600**2))
+
 
     anim_jump.add_character(char_mortimer)
-    anim_jump.generate()
+    #anim_jump.generate()
 
     #===========================================================================
     # Start / Stop Locomotion
@@ -237,6 +243,8 @@ def main():
     #stay above ground plane
     anim_startstop.add_specifier(SpecifierPluginGroundPlane())
 
+    anim_startstop.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_startstop.add_specifier(Objective("uprightPreference",
@@ -279,7 +287,6 @@ def main():
 
     #turning
     turnRadii = [x*x*x for x in numpy.arange(0.3, 2.1, 0.2)]
-    #print zip(turnRadii,[min(speed/r, 2.0) for r in turnRadii])
     c_turn = [[
 	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.0), 0]),
 	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
@@ -291,6 +298,8 @@ def main():
     #stay above ground plane
     anim_walk.add_specifier(SpecifierPluginGroundPlane())
 
+    anim_walk.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_walk.add_specifier(Objective("uprightPreference",
@@ -301,6 +310,61 @@ def main():
 
     anim_walk.add_character(char_mortimer)
     anim_walk.generate()
+
+    #===========================================================================
+    # Walk Spin Animations
+    #===========================================================================
+    anim_walkspin = AnimationSpec(Name='walkspin', FPS=20)
+
+    #specify anim length and contact joints timings (i.e. footsteps)
+    #contact timings given as a fraction of the total animation length
+    time_contact = 0.45
+    period = 2.0 #s
+
+    anim_walkspin.set_length(period)
+    anim_walkspin.set_contact_times({
+    	joint_foot_left:[(0.25, time_contact/period), (0.75, time_contact/period)],	#contact starting at x%, lasting for y%
+    	joint_foot_right:[(0.0, time_contact/period), (0.5, time_contact/period)]	#contact starting at x%, lasting for y%
+    })
+
+    #straight
+    c_straight = [
+        #[SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
+	#Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
+
+        [SpecifierPluginLoop([speed, 0, 0, 0, math.pi, 0], [0, 0, 0]),
+	#Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
+        #ConstraintEq("torso_ry", torso.q[4](0), 0),
+        Constraint("torso_ry", lb=(math.pi*(t/anim_walkspin.FPS))-0.25, c=torso.q[4](t), ub=(math.pi*(t/anim_walkspin.FPS))+0.25), #turn evenly
+        ConstraintEq("torso_tx", torso.q[0](0), 0),
+        ConstraintEq("torso_tz", torso.q[2](0), 0)] for speed in [1.0]
+        ]
+
+    anim_walkspin.add_param_specifier(c_straight)
+
+    #stay above ground plane
+    anim_walkspin.add_specifier(SpecifierPluginGroundPlane())
+
+    anim_walkspin.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+
+    #some "preferences":
+    #minimize rotation of torso on x and z axes (people tend to walk upright)
+    anim_walkspin.add_specifier(Objective("uprightPreference",
+	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0))
+
+    anim_walkspin.add_specifier(Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+
+    #minimize acceleration of torso
+    #torsoAcc = torso.get_acceleration_expr(t)
+    torsoAcc = [x**2 for x in torso.get_acceleration_expr(t)]
+    anim_walkspin.add_specifier(Objective("minimalTorsoAccelerationT",
+        sum(torsoAcc[:3]), 0.5, 't>pTimeBegin && t<pTimeEnd'))
+    anim_walkspin.add_specifier(Objective("minimalTorsoAccelerationR",
+        sum(torsoAcc[3:dof]), 0.007, 't>pTimeBegin && t<pTimeEnd'))
+
+    anim_walkspin.add_character(char_mortimer)
+    anim_walkspin.generate()
 
 
     #===========================================================================
@@ -324,13 +388,12 @@ def main():
     c_straight = [
         [SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
         #Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
-        #ConstraintEq("torso_rx", torso.q[3](t), 0),
+        ConstraintEq("torso_rx", torso.q[3](t), 0),
         ConstraintEq("torso_ry", torso.q[4](t), 0),
 	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]]
 
     #turning
     turnRadii = [x*x for x in numpy.arange(2.0, 3.0, 0.2)]
-    #print zip(turnRadii,[min(speed/r, 2.25) for r in turnRadii])
     c_turn = [[
 	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.25), 0]),
 	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
@@ -342,62 +405,46 @@ def main():
     #stay above ground plane
     anim_run.add_specifier(SpecifierPluginGroundPlane())
 
+    anim_run.add_specifier(SpecifierPluginMinimalJointVelocity(0.25)) #half the normal, since run should be a high-velocity motion
+
     #some "preferences":
     #minimize rotation of torso on z axis (people tend to walk upright)
     anim_run.add_specifier(Objective("uprightPreferenceZ",
 	torso.q[5](t)**2, 500.0))
 
-    #and because the arms aren't very constrained, we'll "lead" the solution a bit
-    '''anim_run.add_specifier(ConstraintEq("shoulderSwingLeft0", joint_shoulder_left.get_angle_expr(t)[2], -0.15, TimeRange='t = 19'))
-    anim_run.add_specifier(ConstraintEq("shoulderSwingLeft1", joint_shoulder_left.get_angle_expr(t)[2], 0.78, TimeRange='t = 7'))
-    anim_run.add_specifier(ConstraintEq("shoulderSwingRight0", joint_shoulder_right.get_angle_expr(t)[2], -0.15, TimeRange='t = 7'))
-    anim_run.add_specifier(ConstraintEq("shoulderSwingRight1", joint_shoulder_right.get_angle_expr(t)[2], 0.78, TimeRange='t = 19'))'''
-
     #keep elbow at -1.9 radians (people run with their elbows bent like this)
     anim_run.add_specifier(Objective("elbowPreferenceZ",
         (joint_elbow_left.get_angle_expr(t)[2]+1.9)**2 + (joint_elbow_right.get_angle_expr(t)[2]+1.9)**2, 400.0))
+
+    #keep knees bent (to prevent "scraping the ground" during swing phase)
+    anim_run.add_specifier(Constraint("keepLeftKneeBent",
+        lb=1.8, c=joint_knee_left.get_angle_expr(t)[2], TimeRange='t in sTimeSteps_R_footOn'))
+    anim_run.add_specifier(Constraint("keepRightKneeBent",
+        lb=1.8, c=joint_knee_right.get_angle_expr(t)[2], TimeRange='t in sTimeSteps_L_footOn'))
 
     anim_run.add_character(char_mortimer)
     #anim_run.generate()
     
     #wait for them all to solve
     anim_idle.wait_for_results()
-    anim_jump.wait_for_results()
+    #anim_jump.wait_for_results()
     anim_startstop.wait_for_results()
     anim_walk.wait_for_results()
-    anim_run.wait_for_results()
+    anim_walkspin.wait_for_results()
+    #anim_run.wait_for_results()
 
-    animList = anim_idle.AnimationList + anim_jump.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_run.AnimationList
+    animList = anim_idle.AnimationList + anim_startstop.AnimationList + anim_walk.AnimationList + anim_walkspin.AnimationList;
     finalAnimList = []
     for anim in animList:
-        #discard the poor ones
-        if anim.Solved and anim.ObjectiveValue < 240:
+        #discard the unsolved ones (and ones with poor objective?)
+        if anim.Solved: #and anim.ObjectiveValue < 240:
             finalAnimList.append(anim)
-
-    #blendedAnim = finalAnimList[1].blend(finalAnimList[2], 0.5, fps=20)
-    #blendedAnim.export('.\\blended')
-
-    #for anim in finalAnimList:
-        #anim = anim.animdata_resample(60) #upsample to 60 fps
-        #anim.export('.\\anims')
-
-    #for anim in finalAnimList:
-            #print "<animationlink skeletonName=\""+anim.Name+".skeleton\" />"
-
-    #for anim in finalAnimList:
-            #print "\""+anim.Name+"\","
-
 
     #experiment to see if we can blend them:
     #=================================================   
     slicedAnimList = [[] for i in range(2**2)]  #TODO: fix this for other characters
 
     for anim in finalAnimList:
-
-        #discard the poor ones
-        if anim.ObjectiveValue > 240:
-            continue
-
         jointsContact = anim.Character.get_joints_contact()
         contactFramesSetList = [anim.get_contact_frames(x) for x in jointsContact]
 
@@ -423,10 +470,8 @@ def main():
     for i, contactType in enumerate(slicedAnimList):
         LOG.debug("Contact type " + str(i) + " has " + str(len(contactType)) + " clips.")
 
-    #flatSlicedAnimList = [item for sublist in slicedAnimList for item in sublist]
-
     #now blend them together, 2 at a time with several weights
-    weightList = [0.25, 0.5, 0.75]
+    weightList = [0.333, 0.666]
     blendedAnimList = []
     for i, anim in enumerate(slicedAnimList):
         #try it without double support blending
@@ -438,9 +483,9 @@ def main():
         if i is 0:
             rootbody = torso        #flight
         elif i is 1:
-            rootbody = calf_left    #right foot contact
+            rootbody = calf_left    #left foot contact
         elif i is 2:
-            rootbody = calf_right   #left foot contact
+            rootbody = calf_right   #right foot contact
         elif i is 3:
             rootbody = calf_left    #double support (just pick one arbitrarily)
 
@@ -449,11 +494,6 @@ def main():
                 newanim = x[0].blend(x[1], weight, rootbody)
                 newanim.Name = "Blend"+str(weight)+ "_" + x[0].Name + "&" + x[1].Name
                 blendedAnimList.append(newanim)
-
-
-    #export them
-    #for x in finalAnimList+blendedAnimList:
-        #x.export('.\\output\\')
 
     #also export as one large skeleton.xml file
     filename = ".\\output" + "\\" + char_mortimer.Name + '.skeleton.xml'
@@ -474,8 +514,9 @@ def test():
     # Simple rigid body test
     #===========================================================================
     char_test = Character('rigidbody')
-    body = RigidBody("Body", 6.41, [0.16, 0.42, 0.16])
+    body = RigidBody(0,"Body", 6.41, [0.16, 0.42, 0.16])
     char_test.add_body(body)
+    char_test.set_default_root(body)
 
     #joint_floor = JointContact("floor", body, body.ep_b(), Friction=1.5)
     #char_test.add_joint(joint_floor)
@@ -519,8 +560,9 @@ def test():
     #anim_test.add_specifier('sum {t in sTimeSteps} (' + ampl(body.q[0](t)**2 + body.q[1](t)**2 + body.q[2](t)**2) + ')', 1.0)
 
     anim_test.add_character(char_test)
-    anim_test.generate('.', 'ipopt')
+    anim_test.generate('ipopt')
 
+    anim_test.wait_for_results()
 
 def backup():
     #bodies/joints are defined in character space:

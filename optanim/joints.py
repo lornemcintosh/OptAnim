@@ -144,6 +144,10 @@ class JointContact(Joint):
     def __str__(self):
 	return 'JointContact "' + self.Name + '": connects ' + str(self.Body.Name) + ' at ' + str(self.Point) + ' to ground plane'
 
+    def get_world_position_expr(self):
+        worldpoint = sym_world_xf(self.Point, [bq(t) for bq in self.Body.q])
+        return worldpoint;
+
     def get_state_constraints(self):
 	#constraints enforced by joint forces
 	retList = []

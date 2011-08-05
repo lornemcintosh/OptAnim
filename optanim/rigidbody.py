@@ -55,3 +55,10 @@ class RigidBody(object):
 	#transform point into body-local coordinates
 	x,y,z = sym_world_xf(spherePoint, [bq(t) for bq in self.q], worldToLocal=True)
 	return Constraint('NoIntersection_' + self.Name, 1, (x**2/(a+r)**2) + (y**2/(b+r)**2) + (z**2/(c+r)**2))
+
+    def get_acceleration_expr(self, time):
+        '''Returns a list of expressions for the acceleration of the q coordinates'''
+        retList = []
+        for i in range(dof):
+            retList.append((self.q[i](time+1) - 2*self.q[i](time) + self.q[i](time-1))/(pH*pH))
+        return retList
