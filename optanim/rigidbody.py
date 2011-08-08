@@ -15,14 +15,7 @@ class RigidBody(object):
 
 	self.Id = Id	    #just used for exporting to ogre format currently
 	self.Name = Name
-
-	#mass vector (diagonals of a mass matrix) for a solid ellipsoid
-	a,b,c = [x/2.0 for x in Diameter] #unpack as radii
-	self.Mass = [Mass, Mass, Mass,	#translational mass
-	    (Mass / 5.0) * (b**2+c**2),	#rotational mass moments of inertia
-	    (Mass / 5.0) * (a**2+c**2),
-	    (Mass / 5.0) * (a**2+b**2)]
-
+        self.Mass = Mass    #scalar mass
 	self.Diameter = Diameter
 	self.q = [
 	    sympy.Symbol(Name + "_qtx"), #translational
@@ -35,8 +28,18 @@ class RigidBody(object):
 
 	LOG.debug('new ' + str(self))
 
+    def get_mass_vector(self):
+        '''Returns mass vector (diagonals of a mass matrix) for this rigid body'''
+        #unpack diameters as radii
+        a,b,c = [x/2.0 for x in self.Diameter]
+        
+        return [self.Mass, self.Mass, self.Mass,    #translational mass
+	    (self.Mass / 5.0) * (b**2+c**2),        #rotational mass moments of inertia (for a solid ellipsoid)
+	    (self.Mass / 5.0) * (a**2+c**2),
+	    (self.Mass / 5.0) * (a**2+b**2)]
+
     def __str__(self):
-	return 'RigidBody "' + self.Name + '": diameter = ' + str(self.Diameter) + ', mass = ' + str(self.Mass)
+	return 'RigidBody "' + self.Name + '": diameter = ' + str(self.Diameter) + ', mass = ' + str(self.get_mass_vector())
 
     def ep_a(self):
 	'''returns the position of endpoint A in body local coordinates'''

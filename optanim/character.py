@@ -17,6 +17,9 @@ class Character(object):
         self.SpecifierList = []
         self.DefaultRoot = None #this body will be used as the root by default
 
+    def get_mass(self):
+        return sum([x.Mass for x in self.BodyList])
+
     def dfs(self, root):
         '''Perform a depth-first traversal of this character's bodies starting from root, yielding parent/child/joint pairs'''
         if root not in self.BodyList:
@@ -93,7 +96,7 @@ class Character(object):
 	#make the mass vector m
 	mList = []
 	for body in self.BodyList:
-	    mList.extend(body.Mass)
+	    mList.extend(body.get_mass_vector())
 	m = sympy.Matrix(mList).T
 
 	Jlam = sympy.Matrix([0]*(len(self.BodyList)*dof))
