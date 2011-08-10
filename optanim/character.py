@@ -20,11 +20,10 @@ class Character(object):
     def get_mass(self):
         return sum([x.Mass for x in self.BodyList])
 
-    def dfs(self, root):
+    def traverse_dfs(self, root):
         '''Perform a depth-first traversal of this character's bodies starting from root, yielding parent/child/joint pairs'''
         if root not in self.BodyList:
             raise BaseException("Character does not contain the specified root body!")
-        
         stack, enqueued = [(None, root)], set([root])
         while stack:
             parent, n = stack.pop()
@@ -32,6 +31,18 @@ class Character(object):
             new = set(self.get_bodies_connected_to_body(n)) - enqueued
             enqueued |= new
             stack.extend([(n, child) for child in new])
+
+    def traverse_bfs(self, root):
+        '''Perform a breadth-first traversal of this character's bodies starting from root, yielding parent/child/joint pairs'''
+        if root not in self.BodyList:
+            raise BaseException("Character does not contain the specified root body!")
+        queue, enqueued = collections.deque([(None, root)]), set([root])
+        while queue:
+            parent, n = queue.popleft()
+            yield parent, n, self.get_joint_connecting_bodies(parent, n)
+            new = set(self.get_bodies_connected_to_body(n)) - enqueued
+            enqueued |= new
+            queue.extend([(n, child) for child in new])
 
     def get_joint_connecting_bodies(self, bodyA, bodyB):
         ret = []
@@ -100,7 +111,7 @@ class Character(object):
 	m = sympy.Matrix(mList).T
 
 	Jlam = sympy.Matrix([0]*(len(self.BodyList)*dof))
-	if len(self.JointList) > 0:
+	if self.JointList:
 	    #make the joint force vector jf
 	    jfList = []
 	    for joint in self.JointList:

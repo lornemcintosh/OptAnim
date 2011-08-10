@@ -22,7 +22,7 @@ class Joint(object):
 
 
 class JointRevolute(Joint):
-    '''Represents a powered revolute joint.'''
+    '''Represents a powered revolute/spherical joint.'''
 
     def __init__(self, Name, BodyA, PointA, BodyB, PointB, RotationLimits, TorqueLimit):
 	'''Constructor'''

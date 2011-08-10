@@ -39,7 +39,7 @@ def ogre3d_get_bones_element(character, root):
     bones = ET.Element("bones")
 
     #traverse character, starting at root
-    for parent,child,joint in character.dfs(root):
+    for parent,child,joint in character.traverse_bfs(root):
 	bone = ET.SubElement(bones, "bone")
 	bone.set("id", str(child.Id))
 	bone.set("name", str(child.Name))
@@ -58,7 +58,7 @@ def ogre3d_get_bones_element(character, root):
             elif joint.BodyA is child and joint.BodyB is parent:
                 pjp, cjp = joint.PointB, joint.PointA
             else:
-                raise BaseException("Output from character.dfs() makes no sense")
+                raise BaseException("Output from character.traverse_bfs() makes no sense")
 
 	    offset = [ pjp[i] - parent.ep_a()[i] for i in range(len(parent.ep_a()))]
 	    position.set("x", "%.9f" % offset[0])
@@ -75,7 +75,7 @@ def ogre3d_get_bones_element(character, root):
 
 def ogre3d_get_bonehierarchy_element(character, root):
     bonehierarchy = ET.Element("bonehierarchy")
-    for parent,child,joint in character.dfs(root):
+    for parent,child,joint in character.traverse_bfs(root):
         if parent is not None:
             boneparent = ET.SubElement(bonehierarchy, "boneparent")
             boneparent.set("bone", str(child.Name))
@@ -91,7 +91,7 @@ def ogre3d_get_animation_element(anim, root):
     animation.set("length", str(length))
     tracks = ET.SubElement(animation, "tracks")
 
-    for parent,child,joint in anim.Character.dfs(root):
+    for parent,child,joint in anim.Character.traverse_bfs(root):
 	track = ET.SubElement(tracks, "track")
 	track.set("bone", str(child.Name))
 	keyframes = ET.SubElement(track, "keyframes")
@@ -165,7 +165,7 @@ def _get_bvh_hierarchy(character, root, level, rootoffset):
 	offset = [ root.ParentJoint.PointA[i] - root.Parent.ep_a()[i] for i in range(len(root.Parent.ep_a()))]
 	ret += '%sOFFSET\t%f\t%f\t%f\n' % tuple([tab] + offset)
 	ret += '%sCHANNELS 3 Yrotation Xrotation Zrotation\n' % tab
-    if len(root.ChildList) > 0:
+    if root.ChildList:
 	for child in root.ChildList:
 	    ret += _get_bvh_hierarchy(character, child, level, rootoffset)
     else:

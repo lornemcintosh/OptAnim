@@ -273,7 +273,7 @@ class Animation(object):
             ret += str(eq)
 
 	#write weighted objectives
-	if len(self.CachedObjectiveList) > 0:
+	if self.CachedObjectiveList:
 	    ret += 'minimize objective: (\n'
 	    for i, obj in enumerate(self.CachedObjectiveList):
                 ret += str(obj)
@@ -295,7 +295,7 @@ class Animation(object):
 
 	ret += 'display solve_result;\n'
 
-	if len(self.CachedObjectiveList) > 0:
+	if self.CachedObjectiveList:
 	    ret += 'display objective;\n'
 
 	    #for interest we can output the values of individual objectives in the solution
@@ -323,7 +323,7 @@ class Animation(object):
 	#did it solve correctly?
 	self.Solved = ("solve_result = solved" in amplresult)
 	if self.Solved:
-	    if len(self.CachedObjectiveList) > 0:
+	    if self.CachedObjectiveList:
 		objectivematch = re.search("(?<=objective = )" + regex_float, amplresult)
 		self.ObjectiveValue = float(objectivematch.group(0))
 
@@ -515,7 +515,7 @@ def frame_interpolate(character, root, frameDataA, frameDataB, weight):
         ret[str(body.Name)] = [None]
 
     #traverse character, starting at root
-    for parent,child,joint in character.dfs(root):
+    for parent,child,joint in character.traverse_bfs(root):
         if parent is None:
             #special case: this is the root body
             #just do a straight-forward lerp for position and rotation
@@ -559,7 +559,7 @@ def frame_interpolate(character, root, frameDataA, frameDataB, weight):
             elif joint.BodyA is child and joint.BodyB is parent:
                 pjp, cjp = joint.PointB, joint.PointA
             else:
-                raise BaseException("Output from character.dfs() makes no sense")
+                raise BaseException("Output from character.traverse_bfs() makes no sense")
             jointPosWorld = num_world_xf(pjp, newParentData)
             jointPosWorld = map(float, jointPosWorld)
             newChildPos = cgtypes.vec3(jointPosWorld) - newChildQuat.rotateVec(cgtypes.vec3(cjp))
