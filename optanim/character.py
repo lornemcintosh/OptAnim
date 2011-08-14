@@ -118,7 +118,7 @@ class Character(object):
 		jfList.extend(joint.f)
 	    jf = sympy.Matrix(jfList).T
 
-	    #setup joint constraint forces
+	    #get a list of joint constraints
 	    jcList = []
 	    for joint in self.JointList:
 		jcList.extend(joint.get_state_constraints())
@@ -170,13 +170,13 @@ class Character(object):
 	    for k,x in enumerate(body.q):
 		aCentral[k] = (vNext[k] - vPrev[k])/(1*pH)
 
-	    #translations (Newton's second law, f=m*a, a=f/m)
+	    #translations (Newton's second law, a=f/m form)
 	    for k,x in enumerate(body.q[:3]):
 		fm = g[k] + (Jlam[b*dof+k] / m[b*dof+k])
 		afm = ConstraintEq(name + '_' + body.Name+ '_' + str(k), aCentral[k], fm, tRange)
 		constraints.append(afm)
 
-	    #rotations (Euler's equations for rigid body dynamics)
+	    #rotations (Euler's equations for rigid body dynamics, ma=f form)
 	    constraints.append(ConstraintEq(name + '_' + body.Name+ '_' + str(3),
 		m[b*dof+3]*aCentral[3]+(m[b*dof+5] - m[b*dof+4])*vCentral[4]*vCentral[5], Jlam[b*dof+3], tRange))
 	    constraints.append(ConstraintEq(name + '_' + body.Name+ '_' + str(4),

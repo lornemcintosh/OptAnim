@@ -1,5 +1,6 @@
 from __future__ import division
 
+from optanim.utils import *
 from optanim.animation import *
 from optanim.character import *
 from optanim.specifier import *
@@ -104,41 +105,41 @@ def main():
     #===========================================================================
     # Idle Animations
     #===========================================================================
-    anim_idle = AnimationSpec(Name='idle', FPS=8)   #low fps is ok, because not much happens
+    anim_idle = ParameterSpace(Name='idle', FPS=8)   #low fps is ok, because not much happens
     anim_idle.set_length(3.0)
     anim_idle.set_contact_times({
     	joint_foot_left:[(0.0, 1.0)],	#contact starting at x, lasting for y
     	joint_foot_right:[(0.0, 1.0)]	#contact starting at x, lasting for y
     })
 
-    anim_idle.add_specifier(SpecifierPluginGroundPlane())
+    anim_idle.add_dimension([[SpecifierPluginGroundPlane()]])
 
-    anim_idle.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+    anim_idle.add_dimension([[SpecifierPluginMinimalJointVelocity(0.5)]])
 
-    #anim_idle.add_specifier(ConstraintEq("moveALittle", torso.q[4](10), 0.05))
+    #anim_idle.add_dimension([[ConstraintEq("moveALittle", torso.q[4](10), 0.05)]])
 
-    anim_idle.add_specifier(ConstraintEq("stoppedRX", torso.q[3](0), 0))
-    anim_idle.add_specifier(ConstraintEq("stoppedRZ", torso.q[5](0), 0))
+    anim_idle.add_dimension([[ConstraintEq("stoppedRX", torso.q[3](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedRZ", torso.q[5](0), 0)]])
 
-    anim_idle.add_specifier(ConstraintEq("stoppedX0", torso.q[0](0), 0))
-    anim_idle.add_specifier(ConstraintEq("stoppedZ0", torso.q[2](0), 0))
+    anim_idle.add_dimension([[ConstraintEq("stoppedX0", torso.q[0](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedZ0", torso.q[2](0), 0)]])
 
-    anim_idle.add_specifier(ConstraintEq("stoppedCLX", calf_left.q[0](0), 0))
-    anim_idle.add_specifier(ConstraintEq("stoppedCRX", calf_right.q[0](0), 0))
+    anim_idle.add_dimension([[ConstraintEq("stoppedCLX", calf_left.q[0](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCRX", calf_right.q[0](0), 0)]])
 
-    anim_idle.add_specifier(ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0))
-    anim_idle.add_specifier(ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0))
+    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0)]])
 
-    anim_idle.add_specifier(ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0))
-    anim_idle.add_specifier(ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0))
+    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0)]])
 
-    anim_idle.add_specifier(ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0))
-    anim_idle.add_specifier(ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0))
+    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0)]])
 
-    anim_idle.add_specifier(SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, 0, 0])) #perfect loop
+    anim_idle.add_dimension([[SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, 0, 0])]]) #perfect loop
 
-    anim_idle.add_specifier(Objective("elbowPreferenceZ",
-        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+    anim_idle.add_dimension([[Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
 
     anim_idle.add_character(char_mortimer)
     anim_idle.generate()
@@ -146,45 +147,45 @@ def main():
     #===========================================================================
     # Jump Animations
     #===========================================================================
-    anim_jump = AnimationSpec(Name='jump', FPS=20)
+    anim_jump = ParameterSpace(Name='jump', FPS=20)
     anim_jump.set_length(1.8)
     anim_jump.set_contact_times({
     	joint_foot_left:[(0.65, 0.7)],	#contact starting at x, lasting for y
     	joint_foot_right:[(0.65, 0.7)]	#contact starting at x, lasting for y
     })
 
-    anim_jump.add_specifier(SpecifierPluginGroundPlane())
+    anim_jump.add_dimension([[SpecifierPluginGroundPlane()]])
 
-    anim_jump.add_specifier(SpecifierPluginMinimalJointVelocity(0.25))
+    anim_jump.add_dimension([[SpecifierPluginMinimalJointVelocity(0.25)]])
 
-    anim_jump.add_specifier(ConstraintEq("stoppedRX", torso.q[3](0), 0))
-    anim_jump.add_specifier(ConstraintEq("stoppedRY", torso.q[4](0), 0))
-    #anim_jump.add_specifier(ConstraintEq("stoppedRZ", torso.q[5](0), 0))
+    anim_jump.add_dimension([[ConstraintEq("stoppedRX", torso.q[3](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedRY", torso.q[4](0), 0)]])
+    #anim_jump.add_dimension([[ConstraintEq("stoppedRZ", torso.q[5](0), 0)]])
 
-    anim_jump.add_specifier(ConstraintEq("stoppedX0", torso.q[0](0), 0))
-    anim_jump.add_specifier(ConstraintEq("stoppedZ0", torso.q[2](0), 0))
+    anim_jump.add_dimension([[ConstraintEq("stoppedX0", torso.q[0](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedZ0", torso.q[2](0), 0)]])
 
-    '''anim_jump.add_specifier(ConstraintEq("stoppedCLX", calf_left.q[0](0), 0))
-    anim_jump.add_specifier(ConstraintEq("stoppedCRX", calf_right.q[0](0), 0))
+    '''anim_jump.add_dimension([[ConstraintEq("stoppedCLX", calf_left.q[0](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCRX", calf_right.q[0](0), 0)]])
 
-    anim_jump.add_specifier(ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0))
-    anim_jump.add_specifier(ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0))
+    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0)]])
 
-    anim_jump.add_specifier(ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0))
-    anim_jump.add_specifier(ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0))
+    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0)]])
 
-    anim_jump.add_specifier(ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0))
-    anim_jump.add_specifier(ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0))'''
+    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0)]])'''
 
-    anim_jump.add_param_specifier([[SpecifierPluginLoop([x, 0, 0, 0, 0, r], [0, 0, 0])] for x in [0.0,0.3] for r in [0.0,-(2.0*math.pi)/1.8]])
+    anim_jump.add_dimension([[SpecifierPluginLoop([x, 0, 0, 0, 0, r], [0, 0, 0])] for x in [0.0,0.3] for r in [0.0,-(2.0*math.pi)/1.8]])
 
-    anim_jump.add_specifier(Objective("elbowPreferenceZ",
-        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+    anim_jump.add_dimension([[Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
 
-    anim_jump.add_specifier(Constraint("groundForceLimit",
-        c=joint_foot_left.f[1](t)**2+joint_foot_right.f[1](t)**2, ub=(600**2)*2))
-    #anim_jump.add_specifier(Constraint("groundForceLimitRight",
-        #c=joint_foot_right.f[1](t)**2, ub=600**2))
+    anim_jump.add_dimension([[Constraint("groundForceLimit",
+        c=joint_foot_left.f[1](t)**2+joint_foot_right.f[1](t)**2, ub=(600**2)*2)]])
+    #anim_jump.add_dimension([[Constraint("groundForceLimitRight",
+        #c=joint_foot_right.f[1](t)**2, ub=600**2)]])
 
 
     anim_jump.add_character(char_mortimer)
@@ -193,7 +194,7 @@ def main():
     #===========================================================================
     # Start / Stop Locomotion
     #===========================================================================
-    anim_startstop = AnimationSpec(Name='startstop', FPS=20)
+    anim_startstop = ParameterSpace(Name='startstop', FPS=20)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
@@ -238,20 +239,20 @@ def main():
         #ConstraintEq("stoppedCL_X1", calf_left.q[0](1), 0),
         #ConstraintEq("stoppedCR_X1", calf_right.q[0](1), 0)]
 
-    anim_startstop.add_param_specifier(c_walk)
+    anim_startstop.add_dimension(c_walk)
 
     #stay above ground plane
-    anim_startstop.add_specifier(SpecifierPluginGroundPlane())
+    anim_startstop.add_dimension([[SpecifierPluginGroundPlane()]])
 
-    anim_startstop.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+    anim_startstop.add_dimension([[SpecifierPluginMinimalJointVelocity(0.5)]])
 
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
-    anim_startstop.add_specifier(Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0))
+    anim_startstop.add_dimension([[Objective("uprightPreference",
+	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
 
-    anim_startstop.add_specifier(Objective("elbowPreferenceZ",
-        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+    anim_startstop.add_dimension([[Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
 
     anim_startstop.add_character(char_mortimer)
     anim_startstop.generate()
@@ -260,7 +261,7 @@ def main():
     #===========================================================================
     # Walk Animations
     #===========================================================================
-    anim_walk = AnimationSpec(Name='walk', FPS=20)
+    anim_walk = ParameterSpace(Name='walk', FPS=20)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
@@ -273,6 +274,12 @@ def main():
     	joint_foot_left:[(0.5, time_contact/period)],	#contact starting at x%, lasting for y%
     	joint_foot_right:[(0.0, time_contact/period)]	#contact starting at x%, lasting for y%
     })
+
+    #without and with "limp" (right knee stays straight)
+    #anim_walk.add_dimension([[None], [ConstraintEq("rightLegLimp", joint_knee_right.get_angle_expr(t)[2], 0.0)]])
+
+    #without and with "limp" (right contact has force limit)
+    #anim_walk.add_dimension([[None], [Constraint("rightLegLimp", c=joint_foot_right.f[1](t), ub=char_mortimer.get_mass() * 9.81 * 0.6)]])
 
     #straight
     c_straight = [
@@ -293,28 +300,85 @@ def main():
 	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
         ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.0)*(t/anim_walk.FPS))] for r in turnRadii]
 
-    anim_walk.add_param_specifier(c_straight + c_turn)
+    anim_walk.add_dimension(c_straight + c_turn)
 
     #stay above ground plane
-    anim_walk.add_specifier(SpecifierPluginGroundPlane())
+    anim_walk.add_dimension([[SpecifierPluginGroundPlane()]])
 
-    anim_walk.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+    anim_walk.add_dimension([[SpecifierPluginMinimalJointVelocity(0.5)]])
 
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
-    anim_walk.add_specifier(Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0))
+    anim_walk.add_dimension([[Objective("uprightPreference",
+	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
 
-    anim_walk.add_specifier(Objective("elbowPreferenceZ",
-        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+    anim_walk.add_dimension([[Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
 
     anim_walk.add_character(char_mortimer)
     anim_walk.generate()
 
     #===========================================================================
+    # Walk Limp Animations
+    #===========================================================================
+    anim_walklimp = ParameterSpace(Name='walklimp', FPS=20)
+
+    #specify anim length and contact joints timings (i.e. footsteps)
+    #contact timings given as a fraction of the total animation length
+    speed = 1.35 #m/s
+    time_contact = guess_contact_time(0.85, speed)
+    period = 1.0 #s
+
+    anim_walklimp.set_length(period)
+    anim_walklimp.set_contact_times({
+    	joint_foot_left:[(0.5, (time_contact/period)*1.5)],	#contact starting at x%, lasting for y%
+    	joint_foot_right:[(0.0, (time_contact/period))]	#contact starting at x%, lasting for y%
+    })
+
+    #without and with "limp" (right contact has force limit)
+    anim_walklimp.add_dimension([[Constraint("rightLegLimp", c=joint_foot_right.f[1](t), ub=char_mortimer.get_mass() * 9.81 * 0.6)]])
+
+    #straight
+    c_straight = [
+        #[SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
+	#Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
+
+        [SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
+	#Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
+        ConstraintEq("torso_ry", torso.q[4](t), 0),
+	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]
+        ]
+
+    #turning
+    turnRadii = [x*x*x for x in numpy.arange(0.3, 2.1, 0.2)]
+    c_turn = [[
+	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.0), 0]),
+	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
+	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
+        ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.0)*(t/anim_walklimp.FPS))] for r in turnRadii]
+
+    anim_walklimp.add_dimension(c_straight + c_turn)
+
+    #stay above ground plane
+    anim_walklimp.add_dimension([[SpecifierPluginGroundPlane()]])
+
+    anim_walklimp.add_dimension([[SpecifierPluginMinimalJointVelocity(0.5)]])
+
+    #some "preferences":
+    #minimize rotation of torso on x and z axes (people tend to walk upright)
+    anim_walklimp.add_dimension([[Objective("uprightPreference",
+	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
+
+    anim_walklimp.add_dimension([[Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
+
+    anim_walklimp.add_character(char_mortimer)
+    anim_walklimp.generate()
+
+    #===========================================================================
     # Walk Spin Animations
     #===========================================================================
-    anim_walkspin = AnimationSpec(Name='walkspin', FPS=20)
+    anim_walkspin = ParameterSpace(Name='walkspin', FPS=20)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
@@ -340,28 +404,28 @@ def main():
         ConstraintEq("torso_tz", torso.q[2](0), 0)] for speed in [1.0]
         ]
 
-    anim_walkspin.add_param_specifier(c_straight)
+    anim_walkspin.add_dimension(c_straight)
 
     #stay above ground plane
-    anim_walkspin.add_specifier(SpecifierPluginGroundPlane())
+    anim_walkspin.add_dimension([[SpecifierPluginGroundPlane()]])
 
-    anim_walkspin.add_specifier(SpecifierPluginMinimalJointVelocity(0.5))
+    anim_walkspin.add_dimension([[SpecifierPluginMinimalJointVelocity(0.5)]])
 
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
-    anim_walkspin.add_specifier(Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0))
+    anim_walkspin.add_dimension([[Objective("uprightPreference",
+	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
 
-    anim_walkspin.add_specifier(Objective("elbowPreferenceZ",
-        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0))
+    anim_walkspin.add_dimension([[Objective("elbowPreferenceZ",
+        joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
 
     #minimize acceleration of torso
     #torsoAcc = torso.get_acceleration_expr(t)
     torsoAcc = [x**2 for x in torso.get_acceleration_expr(t)]
-    anim_walkspin.add_specifier(Objective("minimalTorsoAccelerationT",
-        sum(torsoAcc[:3]), 0.5, 't>pTimeBegin && t<pTimeEnd'))
-    anim_walkspin.add_specifier(Objective("minimalTorsoAccelerationR",
-        sum(torsoAcc[3:dof]), 0.007, 't>pTimeBegin && t<pTimeEnd'))
+    anim_walkspin.add_dimension([[Objective("minimalTorsoAccelerationT",
+        sum(torsoAcc[:3]), 0.5, 't>pTimeBegin && t<pTimeEnd')]])
+    anim_walkspin.add_dimension([[Objective("minimalTorsoAccelerationR",
+        sum(torsoAcc[3:dof]), 0.007, 't>pTimeBegin && t<pTimeEnd')]])
 
     anim_walkspin.add_character(char_mortimer)
     anim_walkspin.generate()
@@ -370,7 +434,7 @@ def main():
     #===========================================================================
     # Run Animations
     #===========================================================================
-    anim_run = AnimationSpec(Name='run', FPS=37)
+    anim_run = ParameterSpace(Name='run', FPS=37)
 
     #specify anim length and contact joints timings (i.e. footsteps)
     #contact timings given as a fraction of the total animation length
@@ -400,27 +464,27 @@ def main():
 	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
         ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.25)*(t/anim_run.FPS))] for r in turnRadii]
 
-    anim_run.add_param_specifier(c_straight + c_turn)
+    anim_run.add_dimension(c_straight + c_turn)
 
     #stay above ground plane
-    anim_run.add_specifier(SpecifierPluginGroundPlane())
+    anim_run.add_dimension([[SpecifierPluginGroundPlane()]])
 
-    anim_run.add_specifier(SpecifierPluginMinimalJointVelocity(0.25)) #half the normal, since run should be a high-velocity motion
+    anim_run.add_dimension([[SpecifierPluginMinimalJointVelocity(0.25)]]) #half the normal, since run should be a high-velocity motion
 
     #some "preferences":
     #minimize rotation of torso on z axis (people tend to walk upright)
-    anim_run.add_specifier(Objective("uprightPreferenceZ",
-	torso.q[5](t)**2, 500.0))
+    anim_run.add_dimension([[Objective("uprightPreferenceZ",
+	torso.q[5](t)**2, 500.0)]])
 
     #keep elbow at -1.9 radians (people run with their elbows bent like this)
-    anim_run.add_specifier(Objective("elbowPreferenceZ",
-        (joint_elbow_left.get_angle_expr(t)[2]+1.9)**2 + (joint_elbow_right.get_angle_expr(t)[2]+1.9)**2, 400.0))
+    anim_run.add_dimension([[Objective("elbowPreferenceZ",
+        (joint_elbow_left.get_angle_expr(t)[2]+1.9)**2 + (joint_elbow_right.get_angle_expr(t)[2]+1.9)**2, 400.0)]])
 
     #keep knees bent (to prevent "scraping the ground" during swing phase)
-    anim_run.add_specifier(Constraint("keepLeftKneeBent",
-        lb=1.8, c=joint_knee_left.get_angle_expr(t)[2], TimeRange='t in sTimeSteps_R_footOn'))
-    anim_run.add_specifier(Constraint("keepRightKneeBent",
-        lb=1.8, c=joint_knee_right.get_angle_expr(t)[2], TimeRange='t in sTimeSteps_L_footOn'))
+    anim_run.add_dimension([[Constraint("keepLeftKneeBent",
+        lb=1.8, c=joint_knee_left.get_angle_expr(t)[2], TimeRange='t in sTimeSteps_R_footOn')]])
+    anim_run.add_dimension([[Constraint("keepRightKneeBent",
+        lb=1.8, c=joint_knee_right.get_angle_expr(t)[2], TimeRange='t in sTimeSteps_L_footOn')]])
 
     anim_run.add_character(char_mortimer)
     #anim_run.generate()
@@ -521,43 +585,43 @@ def test():
     #joint_floor = JointContact("floor", body, body.ep_b(), Friction=1.5)
     #char_test.add_joint(joint_floor)
 
-    anim_test = AnimationSpec(Name='torque-free', FPS=25, Length=2.0)
+    anim_test = ParameterSpace(Name='torque-free', FPS=25, Length=2.0)
 
     #anim_test.set_contact_times({
     	#joint_floor:[(0.0, 1.0)]
     #})
     #spin on x axis, 1.0 rad/s
-    #anim_test.add_specifier(ConstraintEq('spinX', (body.q[3](1) - body.q[3](0)), 5.0*pH, TimeRange='t = 0'))
-    #anim_test.add_specifier(ConstraintEq('spinY', (body.q[4](1) - body.q[4](0)), 0*pH, TimeRange='t = 0'))
-    #anim_test.add_specifier(ConstraintEq('spinZ', (body.q[5](1) - body.q[5](0)), 0.5*pH, TimeRange='t = 0'))
+    #anim_test.add_dimension([[ConstraintEq('spinX', (body.q[3](1) - body.q[3](0)), 5.0*pH, TimeRange='t = 0')]])
+    #anim_test.add_dimension([[ConstraintEq('spinY', (body.q[4](1) - body.q[4](0)), 0*pH, TimeRange='t = 0')]])
+    #anim_test.add_dimension([[ConstraintEq('spinZ', (body.q[5](1) - body.q[5](0)), 0.5*pH, TimeRange='t = 0')]])
 
     #initial conditions
-    #anim_test.add_specifier(ConstraintEq('TX0', body.q[0](0), 0.0))
-    #anim_test.add_specifier(ConstraintEq('TX1', body.q[0](1), 0.0))
+    #anim_test.add_dimension([[ConstraintEq('TX0', body.q[0](0), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TX1', body.q[0](1), 0.0)]])
 
-    #anim_test.add_specifier(ConstraintEq('TY0', body.q[1](0), 0.0))
-    #anim_test.add_specifier(ConstraintEq('TY1', body.q[1](1), 0.0)) #m/s
+    #anim_test.add_dimension([[ConstraintEq('TY0', body.q[1](0), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TY1', body.q[1](1), 0.0)]]) #m/s
 
-    #anim_test.add_specifier(ConstraintEq('TZ0', body.q[2](0), 0.0))
-    #anim_test.add_specifier(ConstraintEq('TZ1', body.q[2](1), 0.0))
+    #anim_test.add_dimension([[ConstraintEq('TZ0', body.q[2](0), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TZ1', body.q[2](1), 0.0)]])
 
-    #anim_test.add_specifier(ConstraintEq('RX0', body.q[3](0), 0.1))
-    #anim_test.add_specifier(ConstraintEq('RX1', body.q[3](1), 0.0*pH)) #rad/s
+    #anim_test.add_dimension([[ConstraintEq('RX0', body.q[3](0), 0.1)]])
+    #anim_test.add_dimension([[ConstraintEq('RX1', body.q[3](1), 0.0*pH)]]) #rad/s
 
-    #anim_test.add_specifier(ConstraintEq('RY0', body.q[4](0), 0.0))
-    #anim_test.add_specifier(Constraint('RY1', lb=5.0*pH, c=body.q[4](1))) #rad/s
+    #anim_test.add_dimension([[ConstraintEq('RY0', body.q[4](0), 0.0))
+    #anim_test.add_dimension([[Constraint('RY1', lb=5.0*pH, c=body.q[4](1))]]) #rad/s
 
-    anim_test.add_specifier(ConstraintEq('RZ0', body.q[5](0), 0.1))
-    #anim_test.add_specifier(ConstraintEq('RZ1', body.q[5](1), 0.5*pH)) #rad/s
+    anim_test.add_dimension([[ConstraintEq('RZ0', body.q[5](0), 0.1)]])
+    #anim_test.add_dimension([[ConstraintEq('RZ1', body.q[5](1), 0.5*pH)]]) #rad/s
 
 
     #stay above ground plane
-    #anim_test.add_specifier(SpecifierPluginGroundPlane())
+    #anim_test.add_dimension([[SpecifierPluginGroundPlane()]])
 
     #start within 1 unit of origin
-    #anim_test.add_specifier(Constraint("startNearOrigin", c=body.q[0](0)**2 + body.q[1](0)**2 + body.q[2](0)**2, ub=1.0**2, TimeRange='t = 0'))
+    #anim_test.add_dimension([[Constraint("startNearOrigin", c=body.q[0](0)**2 + body.q[1](0)**2 + body.q[2](0)**2, ub=1.0**2, TimeRange='t = 0')]])
 
-    #anim_test.add_specifier('sum {t in sTimeSteps} (' + ampl(body.q[0](t)**2 + body.q[1](t)**2 + body.q[2](t)**2) + ')', 1.0)
+    #anim_test.add_dimension([['sum {t in sTimeSteps} (' + ampl(body.q[0](t)**2 + body.q[1](t)**2 + body.q[2](t)**2) + ')', 1.0)
 
     anim_test.add_character(char_test)
     anim_test.generate('ipopt')
@@ -638,7 +702,7 @@ def backup():
     joint_foot_F_R = JointContact("R_foot_front", leg_F_R_L, leg_F_R_L.ep_b(), Friction=0.5)
     char_doug.add_joint(joint_foot_F_R)
 
-    anim_dougtest = AnimationSpec(Name='dougtest', FPS=20)
+    anim_dougtest = ParameterSpace(Name='dougtest', FPS=20)
     anim_dougtest.add_character(char_doug)
     anim_dougtest.set_length(1.19)
     anim_dougtest.set_contact_times({
@@ -647,10 +711,10 @@ def backup():
         joint_foot_B_R:[(0.5, 0.65)],
     	joint_foot_F_R:[(0.75, 0.65)]
     })
-    anim_dougtest.add_specifier(SpecifierPluginGroundPlane())
-    anim_dougtest.add_specifier(SpecifierPluginLoop([1.4, 0, 0, 0, 0, 0], [0, 0, 0]))
-    anim_dougtest.add_specifier(Constraint("startAtOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0'))
-    anim_dougtest.add_specifier(Objective("energy",
+    anim_dougtest.add_dimension([[SpecifierPluginGroundPlane()]])
+    anim_dougtest.add_dimension([[SpecifierPluginLoop([1.4, 0, 0, 0, 0, 0], [0, 0, 0])]])
+    anim_dougtest.add_dimension([[Constraint("startAtOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]])
+    anim_dougtest.add_dimension([[Objective("energy",
         joint_B_L_U.get_torquesquared_expr() +
         joint_B_R_U.get_torquesquared_expr() +
         joint_B_L_L.get_torquesquared_expr() +
@@ -659,7 +723,7 @@ def backup():
         joint_F_R_U.get_torquesquared_expr() +
         joint_F_L_L.get_torquesquared_expr() +
         joint_F_R_L.get_torquesquared_expr()
-        , 0.01))
+        , 0.01)]])
     anim_dougtest.generate('.', 'ipopt')
 
     LOG.info("Exit")

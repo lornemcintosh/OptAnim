@@ -19,10 +19,47 @@ LOG = logging.getLogger(__name__)
 
 pool = ThreadPool()
 
-class AnimationSpec(object):
-    '''Specifies a character animation (or set of parametric animations) to be
-    made. The same animation can often be used for multiple characters - even if
-    their morphologies differ'''
+class ParameterSpace(object):
+    """
+    A utility class that makes it easy to specify and generate large sets of
+    character animations using specifiers in a parameterized, combinatorial way
+
+    Examples
+    --------
+
+    Create a new ParameterSpace:
+    >>> space = ParameterSpace(Name='space')
+
+    Add 1 dimension to space, with 1 set of 1 specifier
+    >>> space.add_dimension( [[ a ]] )
+    Result: 1 animation: (a)
+
+    Add 1 dimension to space, with 1 set of 2 specifiers
+    >>> space.add_dimension( [[ a, b ]] )
+    Result: 1 animation: (a,b)
+
+    Add 1 dimension to space, with 2 sets of specifiers
+    >>> space.add_dimension( [[ a, b ], [ c ]] )
+    Result: 2 animations: (a,b) (c)
+
+    Add 2 dimensions to space (2 sets, 1 set)
+    >>> space.add_dimension( [[ a, b ], [ c ]] )
+    >>> space.add_dimension( [[ d ]] )
+    Result: 2 animations (2x1): (a,b,d) (c,d)
+
+    Add 2 dimensions to space (2 sets, 2 sets)
+    >>> space.add_dimension( [[ a, b ], [ c ]] )
+    >>> space.add_dimension( [[ d ], [ e ]] )
+    Result: 4 animations (2x2): (a,b,d) (a,b,e) (c,d) (c,e)
+
+    Add 3 dimensions to space (2 sets, 2 sets, 2 sets)
+    >>> space.add_dimension( [[ a, b ], [ c ]] )
+    >>> space.add_dimension( [[ d ], [ e ]] )
+    >>> space.add_dimension( [[ f ], [ g ]] )
+    Result: 8 animations (2x2x2): (a,b,d,f) (a,b,d,g) (a,b,e,f) (a,b,e,g)
+                                  (c,d,f) (c,d,g) (c,e,f) (c,e,g)
+
+    """
 
     def __init__(self, Name, Length=None, FPS=25):
 	'''Constructor'''
@@ -31,8 +68,7 @@ class AnimationSpec(object):
 	self.FPS = FPS
 	self.ContactTimesDict = None
 
-	self.SpecifierList = []
-	self.ParamSpecifierList = []
+	self.DimensionList = []
 
 	self.CharacterList = []
 
@@ -53,29 +89,26 @@ class AnimationSpec(object):
     def add_character(self, character):
 	self.CharacterList.append(character)
 
-    def add_specifier(self, spec):
-	'''Add a static specifier -- one that will apply to ALL animations
-	in this AnimationSpec'''
-	self.SpecifierList.append(spec)
+    def add_dimension(self, dim):
+	'''Adds a dimension to the ParameterSpace'''
+	self.DimensionList.append(dim)
 
-    def add_param_specifier(self, spec):
-	'''Add a set of parameterized specifiers -- an animation will be
-	produced for every unique combination of specifiers from these sets'''
-	self.ParamSpecifierList.append(spec)
+    def get_num_combinations(self):
+        ret = len(self.CharacterList)
+	for spec in self.DimensionList:
+	    ret *= max(len(spec), 1)
+        return ret
 
     def generate(self, solver='ipopt'):
 	#print a helpful message about the number of combinations generated
-	combinations = len(self.CharacterList)
-	for spec in self.ParamSpecifierList:
-	    combinations *= max(len(spec), 1)
-        LOG.info("Generating %s (%i combinations)" % (self.Name, combinations))
+        LOG.info("Generating %s (%i combinations)" % (self.Name, self.get_num_combinations()))
 
 	#make an anim for each combination of characters/specifiers
 	for character in self.CharacterList:
-	    for index, comb in enumerate(itertools.product(*self.ParamSpecifierList)):
+	    for index, comb in enumerate(itertools.product(*self.DimensionList)):
                 #build out constraint and objective lists
                 paramList = list(itertools.chain.from_iterable(comb))
-                animSpecifierList = character.SpecifierList + self.SpecifierList + paramList
+                animSpecifierList = character.SpecifierList + paramList
 
                 #create an animation instance
                 animName = character.Name + "_" + self.Name + "_" + str(index)
@@ -96,6 +129,7 @@ class AnimationSpec(object):
                     break
 
     def export(self, outdir):
+        '''Exports all the animations that solved'''
         self.wait_for_results()
         for anim in self.AnimationList:
             if anim.Solved:
@@ -173,6 +207,7 @@ class Animation(object):
         return ret
 
     def animdata_resample(self, fps):
+        '''Returns a new Animation, resampled at the specified fps'''
         ret = copy.deepcopy(self)   #TODO: get rid of this deepcopy (too memory hungry)
         ret.FPS = fps
         frameCount = ret.get_frame_count()
@@ -218,6 +253,9 @@ class Animation(object):
             return ret
 
     def blend(self, other, weight, root=None, fps=25):
+        '''Returns a new Animation, the result of blending between self and
+        other at the specified weight, using root as the root point (body), and
+        sampled at the specified fps'''
         if root is None:
             root = self.Character.DefaultRoot
 
@@ -460,7 +498,7 @@ class Animation(object):
 
 	    #optimize anim length and contact timings with CMA-ES
 	    es = cma.CMAEvolutionStrategy(startPoint, 1.0 / 3.0,
-                                          {'maxiter':100, 'bounds':[lowerBounds, upperBounds]})
+                {'maxiter':100, 'bounds':[lowerBounds, upperBounds]})
 
 	    # iterate until termination
 	    while not es.stop:
