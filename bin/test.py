@@ -116,25 +116,25 @@ def main():
 
     anim_idle.add_dimension([[SpecifierPluginMinimalJointVelocity(0.5)]])
 
-    #anim_idle.add_dimension([[ConstraintEq("moveALittle", torso.q[4](10), 0.05)]])
+    #anim_idle.add_dimension([[ConstraintEq("moveALittle", torso.ry(10), 0.05)]])
 
-    anim_idle.add_dimension([[ConstraintEq("stoppedRX", torso.q[3](0), 0)]])
-    anim_idle.add_dimension([[ConstraintEq("stoppedRZ", torso.q[5](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedRX", torso.rx(0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedRZ", torso.rz(0), 0)]])
 
-    anim_idle.add_dimension([[ConstraintEq("stoppedX0", torso.q[0](0), 0)]])
-    anim_idle.add_dimension([[ConstraintEq("stoppedZ0", torso.q[2](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedX0", torso.tx(0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedZ0", torso.tz(0), 0)]])
 
-    anim_idle.add_dimension([[ConstraintEq("stoppedCLX", calf_left.q[0](0), 0)]])
-    anim_idle.add_dimension([[ConstraintEq("stoppedCRX", calf_right.q[0](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCLX", calf_left.tx(0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCRX", calf_right.tx(0), 0)]])
 
-    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0)]])
-    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RX", calf_left.rx(0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RX", calf_right.rx(0), 0)]])
 
-    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0)]])
-    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RY", calf_left.ry(0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RY", calf_right.ry(0), 0)]])
 
-    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0)]])
-    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCL_RZ", calf_left.rz(0), 0)]])
+    anim_idle.add_dimension([[ConstraintEq("stoppedCR_RZ", calf_right.rz(0), 0)]])
 
     anim_idle.add_dimension([[SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, 0, 0])]]) #perfect loop
 
@@ -158,24 +158,24 @@ def main():
 
     anim_jump.add_dimension([[SpecifierPluginMinimalJointVelocity(0.25)]])
 
-    anim_jump.add_dimension([[ConstraintEq("stoppedRX", torso.q[3](0), 0)]])
-    anim_jump.add_dimension([[ConstraintEq("stoppedRY", torso.q[4](0), 0)]])
-    #anim_jump.add_dimension([[ConstraintEq("stoppedRZ", torso.q[5](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedRX", torso.rx(0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedRY", torso.ry(0), 0)]])
+    #anim_jump.add_dimension([[ConstraintEq("stoppedRZ", torso.rz(0), 0)]])
 
-    anim_jump.add_dimension([[ConstraintEq("stoppedX0", torso.q[0](0), 0)]])
-    anim_jump.add_dimension([[ConstraintEq("stoppedZ0", torso.q[2](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedX0", torso.tx(0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedZ0", torso.tz(0), 0)]])
 
-    '''anim_jump.add_dimension([[ConstraintEq("stoppedCLX", calf_left.q[0](0), 0)]])
-    anim_jump.add_dimension([[ConstraintEq("stoppedCRX", calf_right.q[0](0), 0)]])
+    '''anim_jump.add_dimension([[ConstraintEq("stoppedCLX", calf_left.tx(0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCRX", calf_right.tx(0), 0)]])
 
-    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RX", calf_left.q[3](0), 0)]])
-    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RX", calf_right.q[3](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RX", calf_left.rx(0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RX", calf_right.rx(0), 0)]])
 
-    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RY", calf_left.q[4](0), 0)]])
-    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RY", calf_right.q[4](0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RY", calf_left.ry(0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RY", calf_right.ry(0), 0)]])
 
-    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0)]])
-    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0)]])'''
+    anim_jump.add_dimension([[ConstraintEq("stoppedCL_RZ", calf_left.rz(0), 0)]])
+    anim_jump.add_dimension([[ConstraintEq("stoppedCR_RZ", calf_right.rz(0), 0)]])'''
 
     anim_jump.add_dimension([[SpecifierPluginLoop([x, 0, 0, 0, 0, r], [0, 0, 0])] for x in [0.0,0.3] for r in [0.0,-(2.0*math.pi)/1.8]])
 
@@ -208,36 +208,36 @@ def main():
     coords = [[math.cos(fracCircle*2*math.pi)*speed, math.sin(fracCircle*2*math.pi)*speed] for fracCircle in numpy.arange(0, 1/2+1/8, 1/8)]
 
     c_walk = [[SpecifierPluginLoop([x, 0, z, 0, 0, 0], [0, 0, 0]),
-	#Constraint("faceforwards", lb=-0.15, c=torso.q[4](t), ub=0.15),
-        ConstraintEq("faceforwards", torso.q[4](t), 0),
-        ConstraintEq("stoppedTorso_RX", torso.q[3](0), 0),
-        ConstraintEq("stoppedTorso_RZ", torso.q[5](0), 0),
+	#Constraint("faceforwards", lb=-0.15, c=torso.ry(t), ub=0.15),
+        ConstraintEq("faceforwards", torso.ry(t), 0),
+        ConstraintEq("stoppedTorso_RX", torso.rx(0), 0),
+        ConstraintEq("stoppedTorso_RZ", torso.rz(0), 0),
 
-        ConstraintEq("stoppedTorso_X0", torso.q[0](0), 0),
-        ConstraintEq("stoppedTorso_Z0", torso.q[2](0), 0),
-        ConstraintEq("stoppedTorso_X1", torso.q[0](1), 0),
-        ConstraintEq("stoppedTorso_Z1", torso.q[2](1), 0),
-        #ConstraintEq("stoppedTorso_X2", torso.q[0](2), 0),
-        #ConstraintEq("stoppedTorso_Z2", torso.q[2](2), 0),
+        ConstraintEq("stoppedTorso_X0", torso.tx(0), 0),
+        ConstraintEq("stoppedTorso_Z0", torso.tz(0), 0),
+        ConstraintEq("stoppedTorso_X1", torso.tx(1), 0),
+        ConstraintEq("stoppedTorso_Z1", torso.tz(1), 0),
+        #ConstraintEq("stoppedTorso_X2", torso.tx(2), 0),
+        #ConstraintEq("stoppedTorso_Z2", torso.tz(2), 0),
 
-        ConstraintEq("stoppedCL_RY", thigh_left.q[4](0), 0),
-        ConstraintEq("stoppedCR_RY", thigh_right.q[4](0), 0),
-        ConstraintEq("stoppedCL_RX", thigh_left.q[3](0), 0),
-        ConstraintEq("stoppedCR_RX", thigh_right.q[3](0), 0),
+        ConstraintEq("stoppedCL_RY", thigh_left.ry(0), 0),
+        ConstraintEq("stoppedCR_RY", thigh_right.ry(0), 0),
+        ConstraintEq("stoppedCL_RX", thigh_left.rx(0), 0),
+        ConstraintEq("stoppedCR_RX", thigh_right.rx(0), 0),
 
-        ConstraintEq("stoppedR_arm_upper_RY", R_arm_upper.q[4](0), 0),
-        ConstraintEq("stoppedL_arm_upper_RY", L_arm_upper.q[4](0), 0),
+        ConstraintEq("stoppedR_arm_upper_RY", R_arm_upper.ry(0), 0),
+        ConstraintEq("stoppedL_arm_upper_RY", L_arm_upper.ry(0), 0),
 
-        ConstraintEq("stoppedR_arm_upper_RZ", R_arm_upper.q[5](0), 0),
-        ConstraintEq("stoppedL_arm_upper_RZ", L_arm_upper.q[5](0), 0),
+        ConstraintEq("stoppedR_arm_upper_RZ", R_arm_upper.rz(0), 0),
+        ConstraintEq("stoppedL_arm_upper_RZ", L_arm_upper.rz(0), 0),
 
-        #ConstraintEq("stoppedCL_RZ", calf_left.q[5](0), 0),
-        #ConstraintEq("stoppedCR_RZ", calf_right.q[5](0), 0),
+        #ConstraintEq("stoppedCL_RZ", calf_left.rz(0), 0),
+        #ConstraintEq("stoppedCR_RZ", calf_right.rz(0), 0),
 
-        ConstraintEq("stoppedCL_X0", calf_left.q[0](0), 0),
-        ConstraintEq("stoppedCR_X0", calf_right.q[0](0), 0)] for x,z in coords]
-        #ConstraintEq("stoppedCL_X1", calf_left.q[0](1), 0),
-        #ConstraintEq("stoppedCR_X1", calf_right.q[0](1), 0)]
+        ConstraintEq("stoppedCL_X0", calf_left.tx(0), 0),
+        ConstraintEq("stoppedCR_X0", calf_right.tx(0), 0)] for x,z in coords]
+        #ConstraintEq("stoppedCL_X1", calf_left.tx(1), 0),
+        #ConstraintEq("stoppedCR_X1", calf_right.tx(1), 0)]
 
     anim_startstop.add_dimension(c_walk)
 
@@ -249,7 +249,7 @@ def main():
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_startstop.add_dimension([[Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
+	torso.rx(t)**2 + torso.rz(t)**2, 500.0)]])
 
     anim_startstop.add_dimension([[Objective("elbowPreferenceZ",
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
@@ -284,21 +284,21 @@ def main():
     #straight
     c_straight = [
         #[SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	#Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
+	#Constraint("startTorsoNearOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
 
         [SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	#Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
-        ConstraintEq("torso_ry", torso.q[4](t), 0),
-	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]
+	#Constraint("torso_ry", lb=-0.1, c=torso.ry(t), ub=0.1),
+        ConstraintEq("torso_ry", torso.ry(t), 0),
+	Constraint("startTorsoNearOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]
         ]
 
     #turning
     turnRadii = [x*x*x for x in numpy.arange(0.3, 2.1, 0.2)]
     c_turn = [[
 	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.0), 0]),
-	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
-	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
-        ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.0)*(t/anim_walk.FPS))] for r in turnRadii]
+	ConstraintEq("startTorso_tx", torso.tx(t), 0, TimeRange='t = 0'),
+	ConstraintEq("startTorso_tz", torso.tz(t), r, TimeRange='t = 0'),
+        ConstraintEq("torso_ry", torso.ry(t), min(speed/r, 2.0)*(t/anim_walk.FPS))] for r in turnRadii]
 
     anim_walk.add_dimension(c_straight + c_turn)
 
@@ -310,7 +310,7 @@ def main():
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_walk.add_dimension([[Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
+	torso.rx(t)**2 + torso.rz(t)**2, 500.0)]])
 
     anim_walk.add_dimension([[Objective("elbowPreferenceZ",
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
@@ -341,21 +341,21 @@ def main():
     #straight
     c_straight = [
         #[SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	#Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
+	#Constraint("startTorsoNearOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
 
         [SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	#Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
-        ConstraintEq("torso_ry", torso.q[4](t), 0),
-	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]
+	#Constraint("torso_ry", lb=-0.1, c=torso.ry(t), ub=0.1),
+        ConstraintEq("torso_ry", torso.ry(t), 0),
+	Constraint("startTorsoNearOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]
         ]
 
     #turning
     turnRadii = [x*x*x for x in numpy.arange(0.3, 2.1, 0.2)]
     c_turn = [[
 	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.0), 0]),
-	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
-	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
-        ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.0)*(t/anim_walklimp.FPS))] for r in turnRadii]
+	ConstraintEq("startTorso_tx", torso.tx(t), 0, TimeRange='t = 0'),
+	ConstraintEq("startTorso_tz", torso.tz(t), r, TimeRange='t = 0'),
+        ConstraintEq("torso_ry", torso.ry(t), min(speed/r, 2.0)*(t/anim_walklimp.FPS))] for r in turnRadii]
 
     anim_walklimp.add_dimension(c_straight + c_turn)
 
@@ -367,7 +367,7 @@ def main():
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_walklimp.add_dimension([[Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
+	torso.rx(t)**2 + torso.rz(t)**2, 500.0)]])
 
     anim_walklimp.add_dimension([[Objective("elbowPreferenceZ",
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
@@ -394,14 +394,14 @@ def main():
     #straight
     c_straight = [
         #[SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
-	#Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
+	#Constraint("startTorsoNearOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')],
 
         [SpecifierPluginLoop([speed, 0, 0, 0, math.pi, 0], [0, 0, 0]),
-	#Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
-        #ConstraintEq("torso_ry", torso.q[4](0), 0),
-        Constraint("torso_ry", lb=(math.pi*(t/anim_walkspin.FPS))-0.25, c=torso.q[4](t), ub=(math.pi*(t/anim_walkspin.FPS))+0.25), #turn evenly
-        ConstraintEq("torso_tx", torso.q[0](0), 0),
-        ConstraintEq("torso_tz", torso.q[2](0), 0)] for speed in [1.0]
+	#Constraint("torso_ry", lb=-0.1, c=torso.ry(t), ub=0.1),
+        #ConstraintEq("torso_ry", torso.ry(0), 0),
+        Constraint("torso_ry", lb=(math.pi*(t/anim_walkspin.FPS))-0.25, c=torso.ry(t), ub=(math.pi*(t/anim_walkspin.FPS))+0.25), #turn evenly
+        ConstraintEq("torso_tx", torso.tx(0), 0),
+        ConstraintEq("torso_tz", torso.tz(0), 0)] for speed in [1.0]
         ]
 
     anim_walkspin.add_dimension(c_straight)
@@ -414,7 +414,7 @@ def main():
     #some "preferences":
     #minimize rotation of torso on x and z axes (people tend to walk upright)
     anim_walkspin.add_dimension([[Objective("uprightPreference",
-	torso.q[3](t)**2 + torso.q[5](t)**2, 500.0)]])
+	torso.rx(t)**2 + torso.rz(t)**2, 500.0)]])
 
     anim_walkspin.add_dimension([[Objective("elbowPreferenceZ",
         joint_elbow_left.get_angle_expr(t)[2]**2 + joint_elbow_right.get_angle_expr(t)[2]**2, 50.0)]])
@@ -451,18 +451,18 @@ def main():
     #straight
     c_straight = [
         [SpecifierPluginLoop([speed, 0, 0, 0, 0, 0], [0, 0, 0]),
-        #Constraint("torso_ry", lb=-0.1, c=torso.q[4](t), ub=0.1),
-        ConstraintEq("torso_rx", torso.q[3](t), 0),
-        ConstraintEq("torso_ry", torso.q[4](t), 0),
-	Constraint("startTorsoNearOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]]
+        #Constraint("torso_ry", lb=-0.1, c=torso.ry(t), ub=0.1),
+        ConstraintEq("torso_rx", torso.rx(t), 0),
+        ConstraintEq("torso_ry", torso.ry(t), 0),
+	Constraint("startTorsoNearOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]]
 
     #turning
     turnRadii = [x*x for x in numpy.arange(2.0, 3.0, 0.2)]
     c_turn = [[
 	SpecifierPluginLoop([0, 0, 0, 0, 0, 0], [0, min(speed/r, 2.25), 0]),
-	ConstraintEq("startTorso_tx", torso.q[0](t), 0, TimeRange='t = 0'),
-	ConstraintEq("startTorso_tz", torso.q[2](t), r, TimeRange='t = 0'),
-        ConstraintEq("torso_ry", torso.q[4](t), min(speed/r, 2.25)*(t/anim_run.FPS))] for r in turnRadii]
+	ConstraintEq("startTorso_tx", torso.tx(t), 0, TimeRange='t = 0'),
+	ConstraintEq("startTorso_tz", torso.tz(t), r, TimeRange='t = 0'),
+        ConstraintEq("torso_ry", torso.ry(t), min(speed/r, 2.25)*(t/anim_run.FPS))] for r in turnRadii]
 
     anim_run.add_dimension(c_straight + c_turn)
 
@@ -474,7 +474,7 @@ def main():
     #some "preferences":
     #minimize rotation of torso on z axis (people tend to walk upright)
     anim_run.add_dimension([[Objective("uprightPreferenceZ",
-	torso.q[5](t)**2, 500.0)]])
+	torso.rz(t)**2, 500.0)]])
 
     #keep elbow at -1.9 radians (people run with their elbows bent like this)
     anim_run.add_dimension([[Objective("elbowPreferenceZ",
@@ -591,37 +591,37 @@ def test():
     	#joint_floor:[(0.0, 1.0)]
     #})
     #spin on x axis, 1.0 rad/s
-    #anim_test.add_dimension([[ConstraintEq('spinX', (body.q[3](1) - body.q[3](0)), 5.0*pH, TimeRange='t = 0')]])
-    #anim_test.add_dimension([[ConstraintEq('spinY', (body.q[4](1) - body.q[4](0)), 0*pH, TimeRange='t = 0')]])
-    #anim_test.add_dimension([[ConstraintEq('spinZ', (body.q[5](1) - body.q[5](0)), 0.5*pH, TimeRange='t = 0')]])
+    #anim_test.add_dimension([[ConstraintEq('spinX', (body.rx(1) - body.rx(0)), 5.0*pH, TimeRange='t = 0')]])
+    #anim_test.add_dimension([[ConstraintEq('spinY', (body.ry(1) - body.ry(0)), 0*pH, TimeRange='t = 0')]])
+    #anim_test.add_dimension([[ConstraintEq('spinZ', (body.rz(1) - body.rz(0)), 0.5*pH, TimeRange='t = 0')]])
 
     #initial conditions
-    #anim_test.add_dimension([[ConstraintEq('TX0', body.q[0](0), 0.0)]])
-    #anim_test.add_dimension([[ConstraintEq('TX1', body.q[0](1), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TX0', body.tx(0), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TX1', body.tx(1), 0.0)]])
 
-    #anim_test.add_dimension([[ConstraintEq('TY0', body.q[1](0), 0.0)]])
-    #anim_test.add_dimension([[ConstraintEq('TY1', body.q[1](1), 0.0)]]) #m/s
+    #anim_test.add_dimension([[ConstraintEq('TY0', body.ty(0), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TY1', body.ty(1), 0.0)]]) #m/s
 
-    #anim_test.add_dimension([[ConstraintEq('TZ0', body.q[2](0), 0.0)]])
-    #anim_test.add_dimension([[ConstraintEq('TZ1', body.q[2](1), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TZ0', body.tz(0), 0.0)]])
+    #anim_test.add_dimension([[ConstraintEq('TZ1', body.tz(1), 0.0)]])
 
-    #anim_test.add_dimension([[ConstraintEq('RX0', body.q[3](0), 0.1)]])
-    #anim_test.add_dimension([[ConstraintEq('RX1', body.q[3](1), 0.0*pH)]]) #rad/s
+    #anim_test.add_dimension([[ConstraintEq('RX0', body.rx(0), 0.1)]])
+    #anim_test.add_dimension([[ConstraintEq('RX1', body.rx(1), 0.0*pH)]]) #rad/s
 
-    #anim_test.add_dimension([[ConstraintEq('RY0', body.q[4](0), 0.0))
-    #anim_test.add_dimension([[Constraint('RY1', lb=5.0*pH, c=body.q[4](1))]]) #rad/s
+    #anim_test.add_dimension([[ConstraintEq('RY0', body.ry(0), 0.0))
+    #anim_test.add_dimension([[Constraint('RY1', lb=5.0*pH, c=body.ry(1))]]) #rad/s
 
-    anim_test.add_dimension([[ConstraintEq('RZ0', body.q[5](0), 0.1)]])
-    #anim_test.add_dimension([[ConstraintEq('RZ1', body.q[5](1), 0.5*pH)]]) #rad/s
+    anim_test.add_dimension([[ConstraintEq('RZ0', body.rz(0), 0.1)]])
+    #anim_test.add_dimension([[ConstraintEq('RZ1', body.rz(1), 0.5*pH)]]) #rad/s
 
 
     #stay above ground plane
     #anim_test.add_dimension([[SpecifierPluginGroundPlane()]])
 
     #start within 1 unit of origin
-    #anim_test.add_dimension([[Constraint("startNearOrigin", c=body.q[0](0)**2 + body.q[1](0)**2 + body.q[2](0)**2, ub=1.0**2, TimeRange='t = 0')]])
+    #anim_test.add_dimension([[Constraint("startNearOrigin", c=body.tx(0)**2 + body.ty(0)**2 + body.tz(0)**2, ub=1.0**2, TimeRange='t = 0')]])
 
-    #anim_test.add_dimension([['sum {t in sTimeSteps} (' + ampl(body.q[0](t)**2 + body.q[1](t)**2 + body.q[2](t)**2) + ')', 1.0)
+    #anim_test.add_dimension([['sum {t in sTimeSteps} (' + ampl(body.tx(t)**2 + body.ty(t)**2 + body.tz(t)**2) + ')', 1.0)
 
     anim_test.add_character(char_test)
     anim_test.generate('ipopt')
@@ -713,7 +713,7 @@ def backup():
     })
     anim_dougtest.add_dimension([[SpecifierPluginGroundPlane()]])
     anim_dougtest.add_dimension([[SpecifierPluginLoop([1.4, 0, 0, 0, 0, 0], [0, 0, 0])]])
-    anim_dougtest.add_dimension([[Constraint("startAtOrigin", c=torso.q[0](t) ** 2 + torso.q[2](t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]])
+    anim_dougtest.add_dimension([[Constraint("startAtOrigin", c=torso.tx(t) ** 2 + torso.tz(t) ** 2, ub=1.0 ** 2, TimeRange='t = 0')]])
     anim_dougtest.add_dimension([[Objective("energy",
         joint_B_L_U.get_torquesquared_expr() +
         joint_B_R_U.get_torquesquared_expr() +
@@ -738,7 +738,15 @@ if __name__ == '__main__':
     LOG.debug(sys.argv)
     LOG.debug('Running Python '+sys.version)
 
-    main()
+    #main()
+    torso = RigidBody(0, "C_torso", 26.05, [0.21, 0.52, 0.27])
+    ps_walkcycles = ParameterSpace(Name = "walkcycles")
+    ps_walkcycles.add_dimension( [
+        Constraint(Name="torsoEnd",
+            lb=0, c=(torso.tx(29) - x)**2 + (torso.tz(29) - z)**2, ub=0)
+        for x in range(-3,4) for z in range(-3,4)
+        ] )
+    print ps_walkcycles.get_num_combinations()
 
     '''import cProfile, pstats
     cProfile.run('main()', 'main.profile')

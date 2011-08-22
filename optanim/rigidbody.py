@@ -17,14 +17,18 @@ class RigidBody(object):
 	self.Name = Name
         self.Mass = Mass    #scalar mass
 	self.Diameter = Diameter
-	self.q = [
-	    sympy.Symbol(Name + "_qtx"), #translational
-	    sympy.Symbol(Name + "_qty"),
-	    sympy.Symbol(Name + "_qtz"),
 
-	    sympy.Symbol(Name + "_qrx"), #rotational
-	    sympy.Symbol(Name + "_qry"),
-	    sympy.Symbol(Name + "_qrz")]
+        #define the state variables
+        self.tx = sympy.Symbol(Name + "_qtx")   #translational
+        self.ty = sympy.Symbol(Name + "_qty")
+        self.tz = sympy.Symbol(Name + "_qtz")
+
+        self.rx = sympy.Symbol(Name + "_qrx")   #rotational
+        self.ry = sympy.Symbol(Name + "_qry")
+        self.rz = sympy.Symbol(Name + "_qrz")
+
+	self.q = [self.tx, self.ty, self.tz,
+                  self.rx, self.ry, self.rz]    #in a list for convenience
 
 	LOG.debug('new ' + str(self))
 

@@ -172,7 +172,7 @@ class JointContact(Joint):
 	tRangeOff = 't in sTimeSteps_' + self.Name + 'Off'
 
 	#friction constraint: "stay within static friction cone"
-	#(fx**2 + fz**2) < (fy+u)**2
+	#(fx**2 + fz**2) < (fy*u)**2
 	retList.append(Constraint(self.Name + '_force_friction', c=self.f[0](t) ** 2 + self.f[2](t) ** 2, ub=(self.f[1](t) * self.Friction) ** 2, TimeRange=tRangeOn))
 
 	#contact force may only push (not pull)

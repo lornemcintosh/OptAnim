@@ -95,8 +95,8 @@ class ParameterSpace(object):
 
     def get_num_combinations(self):
         ret = len(self.CharacterList)
-	for spec in self.DimensionList:
-	    ret *= max(len(spec), 1)
+	for dim in self.DimensionList:
+	    ret *= max(len(dim), 1)
         return ret
 
     def generate(self, solver='ipopt'):
