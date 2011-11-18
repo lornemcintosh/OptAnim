@@ -1,6 +1,8 @@
-from __future__ import division
+'''
+OptAnim, specifier module
+'''
 
-#from joints import *
+from __future__ import division
 import joints
 from utils import *
 

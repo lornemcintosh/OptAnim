@@ -1,8 +1,11 @@
+'''
+OptAnim, character module
+'''
+
 from __future__ import division
 import math
-import sympy
 import collections
-
+import sympy
 from specifier import *
 from joints import *
 from utils import *

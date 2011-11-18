@@ -1,12 +1,15 @@
-from __future__ import division
+'''
+OptAnim, animation module
+'''
 
+from __future__ import division
 import math
 import copy
 import itertools
-import numpy
 import re
 import time
-
+import logging
+import numpy
 import cma
 from exporters import *
 from joints import *
@@ -14,7 +17,6 @@ from specifier import *
 from threadpool import *
 from utils import *
 
-import logging
 LOG = logging.getLogger(__name__)
 
 pool = ThreadPool()
@@ -99,6 +101,9 @@ class ParameterSpace(object):
 	    ret *= max(len(dim), 1)
         return ret
 
+    def get_animations_with_tag(self, tag):
+        return [anim for anim in self.AnimationList if anim.has_tag(tag)]
+
     def generate(self, solver='ipopt'):
 	#print a helpful message about the number of combinations generated
         LOG.info("Generating %s (%i combinations)" % (self.Name, self.get_num_combinations()))
@@ -181,6 +186,10 @@ class Animation(object):
         except KeyError:
             raise BaseException('Character "%s" has a contact joint "%s". You must specify timings for %s.' % (self.Character.Name, joint.Name, joint.Name))
 
+    def has_tag(self, tag):
+        '''Returns True if this animation has the specified tag; False otherwise'''
+        return tag in self.SpecifierList
+        
     def get_frame_slice(self, firstFrame, lastFrame):
         '''Returns a new Animation containing just the frames between firstFrame and lastFrame'''
 
@@ -413,9 +422,8 @@ class Animation(object):
 
         filename = outdir + "\\" + self.Name + '.skeleton.xml'
         LOG.info('Writing %s' % filename)
-        file = openfile(filename, 'w')
-        file.write(ogre3d_export_animation(self))
-        file.close()
+        xmltree = ogre3d_export_animation(self)
+        xmltree.write(filename, None, None)
 
     def _solve(self, solver, writeAMPL=False):
 	'''This handles the 'inner' (spacetime) optimization. It assumes that

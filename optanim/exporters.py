@@ -1,7 +1,10 @@
+'''
+OptAnim, exporters module
+'''
+
 import math
 from xml.dom import minidom
 import xml.etree.ElementTree as ET
-
 from joints import *
 from utils import *
 
@@ -26,7 +29,7 @@ def ogre3d_export_animations(animList, root=None):
             raise BaseException("All animations must have the same character")
         animations.append(ogre3d_get_animation_element(anim, root))
 
-    return ET.tostring(docRoot, 'utf-8')
+    return ET.ElementTree(docRoot)#ET.tostring(docRoot, 'utf-8')
 
     #TODO: this was causing memory errors. We need a better method for pretty printing
     #ugly_string = ET.tostring(docRoot, 'utf-8')

@@ -1,12 +1,13 @@
+'''
+OptAnim, utils module
+'''
+
 from __future__ import division
 import math
 import os
 import subprocess
 import sympy
-
-#for fast quat operations (good for manipulating animation
-#data, but unsuitable for spacetime control expressions)
-from cgkit import cgtypes
+from cgkit import cgtypes  #for fast quat operations
 
 #degrees of freedom
 dof = int(6) #3 translational + 3 rotational

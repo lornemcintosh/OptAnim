@@ -1,10 +1,13 @@
-from __future__ import division
-import sympy
+'''
+OptAnim, rigidbody module
+'''
 
+from __future__ import division
+import logging
+import sympy
 from specifier import *
 from utils import *
 
-import logging
 LOG = logging.getLogger(__name__)
 
 class RigidBody(object):

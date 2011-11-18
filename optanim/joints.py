@@ -1,9 +1,12 @@
-from __future__ import division
+'''
+OptAnim, joints module
+'''
 
+from __future__ import division
+import logging
 from specifier import *
 from utils import *
 
-import logging
 LOG = logging.getLogger(__name__)
 
 class Joint(object):
@@ -33,14 +36,17 @@ class JointRevolute(Joint):
 	self.PointB = PointB
 	self.RotationLimits = RotationLimits
 	self.TorqueLimit = TorqueLimit
-	self.f = [
-	    sympy.Symbol(Name + "_ftx"), #translational
-	    sympy.Symbol(Name + "_fty"),
-	    sympy.Symbol(Name + "_ftz"),
 
-	    sympy.Symbol(Name + "_frx"), #rotational
-	    sympy.Symbol(Name + "_fry"),
-	    sympy.Symbol(Name + "_frz")]
+        self.ftx = sympy.Symbol(Name + "_ftx")  #translational
+        self.fty = sympy.Symbol(Name + "_fty")
+        self.ftz = sympy.Symbol(Name + "_ftz")
+
+        self.frx = sympy.Symbol(Name + "_frx")  #rotational
+        self.fry = sympy.Symbol(Name + "_fry")
+        self.frz = sympy.Symbol(Name + "_frz")
+
+	self.f = [self.ftx, self.fty, self.ftz,
+                  self.frx, self.fry, self.frz] #in a list for convenience
 
 	LOG.debug('new ' + str(self))
 	
@@ -132,12 +138,14 @@ class JointContact(Joint):
 	self.Body = Body
 	self.Point = Point
 	self.Friction = Friction
-	self.f = [
-	    sympy.Symbol(Name + "_fx"), #translational
-	    sympy.Symbol(Name + "_fy"),
-	    sympy.Symbol(Name + "_fz"),
-	    
-	    sympy.Symbol(Name + "_fry")] #rotational
+
+        self.ftx = sympy.Symbol(Name + "_ftx") #translational
+        self.fty = sympy.Symbol(Name + "_fty")
+        self.ftz = sympy.Symbol(Name + "_ftz")
+
+        self.fry = sympy.Symbol(Name + "_fry") #rotational
+
+	self.f = [self.ftx, self.fty, self.ftz, self.fry] #in a list for convenience
 
 	LOG.debug('new ' + str(self))
     
