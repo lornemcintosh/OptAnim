@@ -1,0 +1,6 @@
+include README.rst
+include LICENSE
+recursive-include examples *
+
+exclude .gitignore
+global-exclude *.py[co]
