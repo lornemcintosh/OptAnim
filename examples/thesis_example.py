@@ -451,7 +451,7 @@ def main():
     limpingList = [anim for anim in solvedAnimList if anim.has_tag("limping")]
 
     #create the "Well-Connected Motion Graph" blends, using weights 0.333 and 0.666
-	blendedHealthyList = get_wcmg_blends(healthyList, [0.333, 0.666])
+    blendedHealthyList = get_wcmg_blends(healthyList, [0.333, 0.666])
     blendedLimpingList = get_wcmg_blends(limpingList, [0.333, 0.666])
 
     #export as one large skeleton.xml file
@@ -595,16 +595,16 @@ def test():
 if __name__ == '__main__':
 
     #setup the logging framework
-	import sys
+    import sys
     import logging
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s  %(levelname)s  %(message)s")
     LOG.debug(sys.argv)
     LOG.debug('Running Python '+sys.version)
 
-	#run the main function:
+    #run the main function:
     main()
 
-	#or use this instead to profile the performance of main()
+    #or use this instead to profile the performance of main()
     '''import cProfile, pstats
     cProfile.run('main()', 'main.profile')
     p = pstats.Stats('main.profile')
