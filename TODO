@@ -1,5 +1,3 @@
-OptAnim, Copyright (c) 2011 Lorne McIntosh
-
 - Name animations better. Each parameter should contribute a short string to the final name (ex. Mortimer_locomote_1.4mps_1.0rad_forward.bvh)
 - More realistic biomechanical modeling of joints/muscles
 - Add system for making transition animations using Spacetime Control (see paper: Human Motion Synthesis with Optimization-based Graphs, 2010)
@@ -8,4 +6,5 @@ OptAnim, Copyright (c) 2011 Lorne McIntosh
 - Eliminate need for AMPL and write .nl files directly?
 - Investigate using PyDy library for writing equations of motion
 - Try a "2-step" optimization to get reasonable initial values (see paper: Human Motion Synthesis with Optimization-based Graphs, 2010)
+- Try implementing random restart with different initial values - might find better solutions at the expense of more computational time
 - Abstract ground-plane, so it can be sloped or a climbing wall etc. (note these are the same as rotating gravity vector...) What about staircases etc? A library of mathematical surfaces (spheres, ellipsoids etc.) might be nice.
