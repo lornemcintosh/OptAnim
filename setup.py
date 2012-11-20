@@ -5,7 +5,7 @@ from setuptools import setup
 setup(
     name = 'optanim',
 	version = '0.1',
-    description = 'A library for the procedural generation of character animations',
+    description = 'A library for the procedural generation of 3D skeletal character animations',
 	license = 'GPL',
     keywords = ['graphics', 'procedural', 'generation', '3D', 'skeletal', 'character', 'animation', 'videogame', 'optimal', 'spacetime', 'constraints', 'control', 'non-linear', 'optimization', 'parameter', 'space', 'physics'],
     author = 'Lorne McIntosh',

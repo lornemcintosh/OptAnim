@@ -20,6 +20,7 @@ Dependencies
 ============
 - Python 2.6 (http://www.python.org/download/releases/2.6.6/)
 - SymPy 0.7.2 (http://sympy.org/en/index.html) or ``$ pip install sympy``
+- NumPy 1.6.2 (http://numpy.scipy.org/) or ``$ pip install numpy``
 - cgkit 2.0.0 alpha 9 (http://sourceforge.net/projects/cgkit/files/cgkit/)
 - AMPL (http://www.ampl.com/) (commercial - help remove this dependency!)
 - IPOPT 3.10.1 (http://www.coin-or.org/download/binary/Ipopt/)
@@ -29,9 +30,14 @@ Dependencies
 
 Installation
 ============
-First install Python, SymPy and cgkit. Download the OptAnim source. Copy the AMPL and IPOPT binaries into the OptAnim ``/bin`` folder. Finally run::
+First install Python, SymPy, NumPy and cgkit. Install the AMPL and IPOPT executables on your system, and make sure they can be accessed via the system PATH variable. Now download the OptAnim source and run::
 
   $ python setup.py install
+
+You can test the install by running one of the examples::
+
+  $ cd examples
+  $ python ./thesis_example.py
 
 
 Example Usage
