@@ -442,7 +442,7 @@ class Animation(object):
         filename = outdir + "\\" + self.Name + '.skeleton.xml'
         LOG.info('Writing %s' % filename)
         xmltree = ogre3d_export_animation(self)
-        xmltree.write(filename, None, None)
+        xmltree.write(filename)
 
     def _solve(self, solver, writeAMPL=False):
 	'''This handles the 'inner' (spacetime) optimization. It assumes that
