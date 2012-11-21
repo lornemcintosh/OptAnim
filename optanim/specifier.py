@@ -26,230 +26,230 @@ import joints
 from utils import *
 
 class Specifier(object):
-    '''Abstract base class for Constraint and Objective classes'''
-    def __init__(self):
-	pass
+	'''Abstract base class for Constraint and Objective classes'''
+	def __init__(self):
+		pass
 
-    def __repr__(self):
-        return AmplPrinter().doprint(self)
+	def __repr__(self):
+		return AmplPrinter().doprint(self)
 
-    def __str__(self):
-        return AmplPrinter().doprint(self)
+	def __str__(self):
+		return AmplPrinter().doprint(self)
 
-    def _sympystr(self, p):
-        raise NotImplementedError("You must override this method")
+	def _sympystr(self, p):
+		raise NotImplementedError("You must override this method")
 
 
 class Constraint(Specifier):
-    '''Represents a constraint expression with lower and upper bounds'''
-    def __init__(self, Name, lb=None, c=None, ub=None, TimeRange=''):
-	self.Name = Name
-	self.lb = lb	#lower bound
-	self.c = c	#constrained expr
-	self.ub = ub	#upper bound
-	self.TimeRange = TimeRange  #e.g. 1 <= t <= 5
+	'''Represents a constraint expression with lower and upper bounds'''
+	def __init__(self, Name, lb=None, c=None, ub=None, TimeRange=''):
+		self.Name = Name
+		self.lb = lb	#lower bound
+		self.c = c	#constrained expr
+		self.ub = ub	#upper bound
+		self.TimeRange = TimeRange  #e.g. 1 <= t <= 5
 
-    def _sympystr(self, p):
-	#declaration:
-	if(self.TimeRange != ''):
-	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps: ' + str(self.TimeRange) + '}:\n\t';
-	else:
-	    decl = 'subject to ' + self.Name + ' {t in sTimeSteps}:\n\t';
+	def _sympystr(self, p):
+		#declaration:
+		if(self.TimeRange != ''):
+			decl = 'subject to ' + self.Name + ' {t in sTimeSteps: ' + str(self.TimeRange) + '}:\n\t';
+		else:
+			decl = 'subject to ' + self.Name + ' {t in sTimeSteps}:\n\t';
 
-	#equality
-	if(self.lb == self.ub):
-	    return decl + p.doprint(self.c) + ' == ' + p.doprint(self.lb) + ';\n'
+		#equality
+		if(self.lb == self.ub):
+			return decl + p.doprint(self.c) + ' == ' + p.doprint(self.lb) + ';\n'
 
-	#inequality
-	elif(self.lb is not None and self.c and self.ub is not None):
-	    return decl + p.doprint(self.lb) + ' <= ' + p.doprint(self.c) + ' <= ' + p.doprint(self.ub) + ';\n'
-	elif(self.lb is not None and self.c is not None):
-	    return decl + p.doprint(self.lb) + ' <= ' + p.doprint(self.c) + ';\n'
-	elif(self.c is not None and self.ub is not None):
-	    return decl + p.doprint(self.c) + ' <= ' + p.doprint(self.ub) + ';\n'
-	else:
-	    raise BaseException("This is not a proper constraint!")
+		#inequality
+		elif(self.lb is not None and self.c and self.ub is not None):
+			return decl + p.doprint(self.lb) + ' <= ' + p.doprint(self.c) + ' <= ' + p.doprint(self.ub) + ';\n'
+		elif(self.lb is not None and self.c is not None):
+			return decl + p.doprint(self.lb) + ' <= ' + p.doprint(self.c) + ';\n'
+		elif(self.c is not None and self.ub is not None):
+			return decl + p.doprint(self.c) + ' <= ' + p.doprint(self.ub) + ';\n'
+		else:
+			raise BaseException("This is not a proper constraint!")
 
 class ConstraintEq(Constraint):
-    '''Convenience class for creating an equality
-    constraint (lower and upper bounds are equal)'''
-    def __init__(self, Name, a, b=0, TimeRange=''):
-	Constraint.__init__(self, Name, lb=b, c=a, ub=b, TimeRange=TimeRange)
+	'''Convenience class for creating an equality
+	constraint (lower and upper bounds are equal)'''
+	def __init__(self, Name, a, b=0, TimeRange=''):
+		Constraint.__init__(self, Name, lb=b, c=a, ub=b, TimeRange=TimeRange)
 
 
 class Objective(Specifier):
-    '''Represents an objective expression, with an associated weighting'''
-    def __init__(self, Name, Objective=None, Weight=1.0, TimeRange=None):
-	self.Name = Name
-	self.Objective = Objective	#objective expr
-	self.TimeRange = TimeRange  #e.g. 1 <= t <= 5
-        self.Weight = Weight
+	'''Represents an objective expression, with an associated weighting'''
+	def __init__(self, Name, Objective=None, Weight=1.0, TimeRange=None):
+		self.Name = Name
+		self.Objective = Objective	#objective expr
+		self.TimeRange = TimeRange  #e.g. 1 <= t <= 5
+		self.Weight = Weight
 
-    def get_objective_str(self):
-        s=''
-        if self.TimeRange is not None:
-            s = ': '+self.TimeRange
-        return 'sum {t in sTimeSteps'+s+'} (' + ampl(self.Objective) + ')'
+	def get_objective_str(self):
+		s=''
+		if self.TimeRange is not None:
+			s = ': '+self.TimeRange
+		return 'sum {t in sTimeSteps'+s+'} (' + ampl(self.Objective) + ')'
 
-    def get_weightedobjective_str(self):
-        return  str(self.Weight) + ' * ' + self.get_objective_str()
+	def get_weightedobjective_str(self):
+		return  str(self.Weight) + ' * ' + self.get_objective_str()
 
-    def _sympystr(self, p):
-        return '\t(' + self.get_weightedobjective_str() + ')'
+	def _sympystr(self, p):
+		return '\t(' + self.get_weightedobjective_str() + ')'
 
-    def write_debug_str(self):
-        return 'printf "Objective_'+self.Name+': %f * %f = %f\\n",'+str(self.Weight)+','+str(self.get_objective_str())+','+self.get_weightedobjective_str()+';\n'
+	def write_debug_str(self):
+		return 'printf "Objective_'+self.Name+': %f * %f = %f\\n",'+str(self.Weight)+','+str(self.get_objective_str())+','+self.get_weightedobjective_str()+';\n'
 
 
 class SpecifierPlugin(object):
-    '''Abstract base class for specifier plugins. Specifier plugins provide a
-    way to procedurally generate specifiers. For instance they can be used to
-    generate specifiers that will perform the same function for any character,
-    regardless of particular morphologies'''
+	'''Abstract base class for specifier plugins. Specifier plugins provide a
+	way to procedurally generate specifiers. For instance they can be used to
+	generate specifiers that will perform the same function for any character,
+	regardless of particular morphologies'''
 
-    def __init__(self):
-	pass
+	def __init__(self):
+		pass
 
-    def get_specifiers(self, animation, character):
-        '''Returns a list of specifiers generated by the plugin'''
-        raise NotImplementedError("You must override this method")
+	def get_specifiers(self, animation, character):
+		'''Returns a list of specifiers generated by the plugin'''
+		raise NotImplementedError("You must override this method")
 
 
 class SpecifierPluginLoop(SpecifierPlugin):
-    '''A specifier plugin that enforces cyclic (looping) motion'''
+	'''A specifier plugin that enforces cyclic (looping) motion'''
 
-    def __init__(self, vel=[0]*dof, angVel=[0]*3):
-	'''Constructor'''
-	self.vel = vel
-	self.angVel = angVel
-	SpecifierPlugin.__init__(self)
+	def __init__(self, vel=[0]*dof, angVel=[0]*3):
+		'''Constructor'''
+		self.vel = vel
+		self.angVel = angVel
+		SpecifierPlugin.__init__(self)
 
-    def get_offset(self, qin, dir):
-	'''Returns q coordinates transformed in dir "direction" (+1 / -1). This
-	is a fairly arbitrary transform (but expressive enough for making
-	characters move in a variety of ways)'''
-	q = list(qin)
+	def get_offset(self, qin, dir):
+		'''Returns q coordinates transformed in dir "direction" (+1 / -1). This
+		is a fairly arbitrary transform (but expressive enough for making
+		characters move in a variety of ways)'''
+		q = list(qin)
 
-	if self.angVel[0] is not 0 or self.angVel[1] is not 0 or self.angVel[2] is not 0:
-	    #rotate body positions around a point
-	    rotCenterWorld = sympy.Matrix([0,0,0]) #rotation (pivot) point; just the origin for now
-	    rotmat = sym_euler_to_matrix([dir*k*self.animation.Length for k in self.angVel])
-	    q[:3] = (rotmat * (sympy.Matrix(q[:3]) - rotCenterWorld)) + rotCenterWorld
-	    
-	    #also the bodies themselves rotate:
-	    if self.angVel[0] is 0 and self.angVel[2] is 0:
-		#special performance tweak for rotation only around y-axis:
-		#this works because our rotation order is YXZ (y first)
-		q[4] = q[4]+(dir*self.angVel[1]*self.animation.Length)
-	    else:
-		#generic method, always works
-		currRotMat = sym_euler_to_matrix(q[3:])
-		newRotMat = (rotmat*currRotMat)
-		q[3:] = sym_matrix_to_euler(newRotMat)
+		if self.angVel[0] is not 0 or self.angVel[1] is not 0 or self.angVel[2] is not 0:
+			#rotate body positions around a point
+			rotCenterWorld = sympy.Matrix([0,0,0]) #rotation (pivot) point; just the origin for now
+			rotmat = sym_euler_to_matrix([dir*k*self.animation.Length for k in self.angVel])
+			q[:3] = (rotmat * (sympy.Matrix(q[:3]) - rotCenterWorld)) + rotCenterWorld
+			
+			#also the bodies themselves rotate:
+			if self.angVel[0] is 0 and self.angVel[2] is 0:
+				#special performance tweak for rotation only around y-axis:
+				#this works because our rotation order is YXZ (y first)
+				q[4] = q[4]+(dir*self.angVel[1]*self.animation.Length)
+			else:
+				#generic method, always works
+				currRotMat = sym_euler_to_matrix(q[3:])
+				newRotMat = (rotmat*currRotMat)
+				q[3:] = sym_matrix_to_euler(newRotMat)
 
-	#finally we add a simple offset to body positions and rotations
-	q = [x+(dir*self.vel[k]*self.animation.Length) for k,x in enumerate(q)]
+		#finally we add a simple offset to body positions and rotations
+		q = [x+(dir*self.vel[k]*self.animation.Length) for k,x in enumerate(q)]
 
-	return q
+		return q
 
-    def get_specifiers(self, animation, character):
-	self.animation = animation  #TODO: HACK: save a reference for later reference in get_offset
-	retList = []
+	def get_specifiers(self, animation, character):
+		self.animation = animation  #TODO: HACK: save a reference for later reference in get_offset
+		retList = []
 
-	#first frame connects to last
-	retList.extend(character.get_newtonian_constraints(
-	    'LoopBegin', 'pTimeEnd', 'pTimeBegin', 'pTimeBegin+1', 't=pTimeBegin', self.get_offset, -1, None, 1))
+		#first frame connects to last
+		retList.extend(character.get_newtonian_constraints(
+			'LoopBegin', 'pTimeEnd', 'pTimeBegin', 'pTimeBegin+1', 't=pTimeBegin', self.get_offset, -1, None, 1))
 
-	#last frame connects to first
-	retList.extend(character.get_newtonian_constraints(
-	    'LoopEnd', 'pTimeEnd-1', 'pTimeEnd', 'pTimeBegin', 't=pTimeEnd', None, -1, self.get_offset, 1))
+		#last frame connects to first
+		retList.extend(character.get_newtonian_constraints(
+			'LoopEnd', 'pTimeEnd-1', 'pTimeEnd', 'pTimeBegin', 't=pTimeEnd', None, -1, self.get_offset, 1))
 
-	#we also have to loop the contact joint 'zero velocity' constraints
-	for j in character.get_joints_contact():
-	    tRangeOn = 't in sTimeSteps_' + j.Name + 'On'
-	    begin = self.get_offset([x('pTimeBegin') for x in j.Body.q], 1)
-	    end = [x('pTimeEnd') for x in j.Body.q]
+		#we also have to loop the contact joint 'zero velocity' constraints
+		for j in character.get_joints_contact():
+			tRangeOn = 't in sTimeSteps_' + j.Name + 'On'
+			begin = self.get_offset([x('pTimeBegin') for x in j.Body.q], 1)
+			end = [x('pTimeEnd') for x in j.Body.q]
 
-	    worldpoint_Begin = list(sym_world_xf(j.Point, begin))
-	    worldpoint_End = list(sym_world_xf(j.Point, end))
+			worldpoint_Begin = list(sym_world_xf(j.Point, begin))
+			worldpoint_End = list(sym_world_xf(j.Point, end))
 
-	    #loop the contact joint 'zero velocity' constraints (see joints.py)
-	    retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_Begin[0], worldpoint_End[0], TimeRange=tRangeOn + ' && t=pTimeBegin'))
-	    retList.append(ConstraintEq(j.Name + '_state_z_loop', worldpoint_Begin[2], worldpoint_End[2], TimeRange=tRangeOn + ' && t=pTimeBegin'))
+			#loop the contact joint 'zero velocity' constraints (see joints.py)
+			retList.append(ConstraintEq(j.Name + '_state_x_loop', worldpoint_Begin[0], worldpoint_End[0], TimeRange=tRangeOn + ' && t=pTimeBegin'))
+			retList.append(ConstraintEq(j.Name + '_state_z_loop', worldpoint_Begin[2], worldpoint_End[2], TimeRange=tRangeOn + ' && t=pTimeBegin'))
 
-	    #loop the contact joint 'zero angular velocity' constraint (see joints.py)
-	    retList.append(ConstraintEq(j.Name + '_state_ry_loop', begin[4], end[4], TimeRange=tRangeOn + ' && t=pTimeBegin'))
+			#loop the contact joint 'zero angular velocity' constraint (see joints.py)
+			retList.append(ConstraintEq(j.Name + '_state_ry_loop', begin[4], end[4], TimeRange=tRangeOn + ' && t=pTimeBegin'))
 
-	return retList
+		return retList
 
 
 class SpecifierPluginGroundPlane(SpecifierPlugin):
-    '''A constraint plugin that keeps bodies on or above the ground plane'''
+	'''A constraint plugin that keeps bodies on or above the ground plane'''
 
-    def __init__(self):
-	'''Constructor'''
-	SpecifierPlugin.__init__(self)
+	def __init__(self):
+		'''Constructor'''
+		SpecifierPlugin.__init__(self)
 
-    def get_specifiers(self, animation, character):
-	retList = []
-	for body in character.BodyList:
-	    worldpointA = sym_world_xf(body.ep_a(), [bq(t) for bq in body.q])
-	    worldpointB = sym_world_xf(body.ep_b(), [bq(t) for bq in body.q])
-	    retList.append(Constraint(body.Name + '_AboveGroundPlane_A', lb=0, c=worldpointA[1]))
-	    retList.append(Constraint(body.Name + '_AboveGroundPlane_B', lb=0, c=worldpointB[1]))
-	return retList
+	def get_specifiers(self, animation, character):
+		retList = []
+		for body in character.BodyList:
+			worldpointA = sym_world_xf(body.ep_a(), [bq(t) for bq in body.q])
+			worldpointB = sym_world_xf(body.ep_b(), [bq(t) for bq in body.q])
+			retList.append(Constraint(body.Name + '_AboveGroundPlane_A', lb=0, c=worldpointA[1]))
+			retList.append(Constraint(body.Name + '_AboveGroundPlane_B', lb=0, c=worldpointB[1]))
+		return retList
 
 
 class SpecifierPluginMinimalTorque(SpecifierPlugin):
-    '''An objective plugin that minimizes the "muscle" torque exerted at the joints'''
+	'''An objective plugin that minimizes the "muscle" torque exerted at the joints'''
 
-    def __init__(self, Weight):
-	'''Constructor'''
-        self.Weight = Weight
-	SpecifierPlugin.__init__(self)
+	def __init__(self, Weight):
+		'''Constructor'''
+		self.Weight = Weight
+		SpecifierPlugin.__init__(self)
 
-    def get_specifiers(self, animation, character):
-	expr = 0
+	def get_specifiers(self, animation, character):
+		expr = 0
 
-	for j in character.JointList:
-            if isinstance(j, joints.JointRevolute):
-                expr += j.get_sumsqr_torque_expr(t)
+		for j in character.JointList:
+			if isinstance(j, joints.JointRevolute):
+				expr += j.get_sumsqr_torque_expr(t)
 
-        obj = Objective("MinimalTorque", expr, self.Weight)
-        return [obj]
+		obj = Objective("MinimalTorque", expr, self.Weight)
+		return [obj]
 
 class SpecifierPluginMinimalJointVelocity(SpecifierPlugin):
-    '''An objective plugin that minimizes the angular velocity of all the joints'''
+	'''An objective plugin that minimizes the angular velocity of all the joints'''
 
-    def __init__(self, Weight):
-	'''Constructor'''
-        self.Weight = Weight
-	SpecifierPlugin.__init__(self)
+	def __init__(self, Weight):
+		'''Constructor'''
+		self.Weight = Weight
+		SpecifierPlugin.__init__(self)
 
-    def get_specifiers(self, animation, character):
-	expr = 0
+	def get_specifiers(self, animation, character):
+		expr = 0
 
-	for j in character.JointList:
-            if isinstance(j, joints.JointRevolute):
-                expr += j.get_sumsqr_angle_velocity_expr(t)
+		for j in character.JointList:
+			if isinstance(j, joints.JointRevolute):
+				expr += j.get_sumsqr_angle_velocity_expr(t)
 
-        obj = Objective("MinimalJointVelocity", expr, self.Weight, 't>pTimeBegin && t<pTimeEnd')
-        return [obj]
+		obj = Objective("MinimalJointVelocity", expr, self.Weight, 't>pTimeBegin && t<pTimeEnd')
+		return [obj]
 
 class SpecifierPluginMinimalJointAcceleration(SpecifierPlugin):
-    '''An objective plugin that minimizes the angular acceleration of all the joints'''
+	'''An objective plugin that minimizes the angular acceleration of all the joints'''
 
-    def __init__(self, Weight):
-	'''Constructor'''
-        self.Weight = Weight
-	SpecifierPlugin.__init__(self)
+	def __init__(self, Weight):
+		'''Constructor'''
+		self.Weight = Weight
+		SpecifierPlugin.__init__(self)
 
-    def get_specifiers(self, animation, character):
-	expr = 0
+	def get_specifiers(self, animation, character):
+		expr = 0
 
-	for j in character.JointList:
-            if isinstance(j, joints.JointRevolute):
-                expr += j.get_sumsqr_angle_acceleration_expr(t)
+		for j in character.JointList:
+			if isinstance(j, joints.JointRevolute):
+				expr += j.get_sumsqr_angle_acceleration_expr(t)
 
-        obj = Objective("MinimalJointAcceleration", expr, self.Weight)
-        return [obj]
+		obj = Objective("MinimalJointAcceleration", expr, self.Weight)
+		return [obj]
