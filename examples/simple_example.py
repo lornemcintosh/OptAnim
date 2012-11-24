@@ -115,12 +115,12 @@ def test():
 #this check is necessary for multiprocessing to work
 if __name__ == '__main__':
 
-    #setup the logging framework
-    import sys
-    import logging
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
-    LOG.debug(sys.argv)
-    LOG.debug('Running Python '+sys.version)
+	#setup the logging framework
+	import sys
+	import logging
+	logging.basicConfig(level=logging.INFO, format="%(asctime)s  %(levelname)s  %(message)s")
+	LOG.debug(sys.argv)
+	LOG.debug('Running Python '+sys.version)
 
-    #run the test function:
-    test()
+	#run the test function:
+	test()
