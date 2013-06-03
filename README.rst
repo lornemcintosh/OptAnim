@@ -18,12 +18,12 @@ Features
 
 Dependencies
 ============
-- Python 2.6 (http://www.python.org/download/releases/2.6.6/)
+- Python 2.7.4 (http://www.python.org/download/releases/2.7.4)
 - SymPy 0.7.2 (http://sympy.org/en/index.html) or ``$ pip install sympy``
-- NumPy 1.6.2 (http://numpy.scipy.org/) or ``$ pip install numpy``
-- cgkit 2.0.0 alpha 9 (http://sourceforge.net/projects/cgkit/files/cgkit/)
+- NumPy 1.7.1 (http://numpy.scipy.org/) or ``$ pip install numpy``
+- cgkit 2.0.0 (http://sourceforge.net/projects/cgkit/files/cgkit/cgkit-2.0.0/)
 - AMPL (http://www.ampl.com/) (commercial - help remove this dependency!)
-- IPOPT 3.10.1 (http://www.coin-or.org/download/binary/Ipopt/)
+- IPOPT 3.11.0 (http://www.coin-or.org/download/binary/Ipopt/)
 
 *Other versions of these may also work. Try your luck.*
 
@@ -42,17 +42,30 @@ You can test the install by running one of the examples::
 
 Example Usage
 =============
-Define your character by connecting rigid-bodies with joints:
+Define characters by connecting rigid-bodies with joints. In this simple example we'll just use a single body:
 
->>> todo
+>>> char = Character('Basketball')
+>>> body = RigidBody(Id=0, Name='BasketballBody', Mass=0.6237, Diameter=[0.239, 0.239, 0.239])
+>>> char.add_body(body)
 
-Create an animation using constraints and objectives:
+Create parameter spaces to generate animations for characters:
 
->>> todo
+>>> anim = ParameterSpace(Name='ShotTrajectory', FPS=30, Length=2.0)
+>>> anim.add_character(char)
 
-Now make a parameter-space with dozens of animations:
+For each parameter space, specify what animations we want using constraints and objectives functions:
 
->>> todo
+>>> #for a ball starting at each of these coordinates:
+>>> anim.add_dimension([[ConstraintEq("Xstart", body.tx(0), x)] for x in range(2,8)])
+>>> anim.add_dimension([[ConstraintEq("Ystart", body.ty(0), 0.0)]])
+>>> anim.add_dimension([[ConstraintEq("Zstart", body.tz(0), z)] for z in range(-3,4)])
+>>> #and passing through the hoop on frame 50
+>>> anim.add_dimension([[ConstraintEq("Xend", body.tx(50), 0.0), ConstraintEq("Yend", body.ty(50), 3.0), ConstraintEq("Zend", body.tz(50), 0.0)]])
+
+Generate the animations:
+
+>>> anim.generate()
+>>> anim.wait_for_results()
 
 
 Documentation
